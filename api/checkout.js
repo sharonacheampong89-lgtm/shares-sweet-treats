@@ -3,25 +3,33 @@ const Stripe = require('stripe');
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const MENU = new Map([
-  ['Classic Chocolate Chip', 325], ['Biscoff Cookie Butter', 325], ['Nutella Lava', 350], ['Sâ€™mores', 350],
+  ['Classic Chocolate Chip', 325], ['Biscoff Cookie Butter', 325], ['Nutella Lava', 350], ['S’mores', 350],
   ['Strawberry Crunch', 325], ['Red Velvet White Chocolate', 325], ['Brown Butter Pecan', 350], ['Cookie Monster', 325], ['Lemon Sugar', 325],
   ['Vanilla Bean', 325], ['Chocolate Fudge', 325], ['Strawberry Crunch', 350], ['Biscoff Dream', 350], ['Nutella Hazelnut', 375], ['Banana Pudding', 375], ['Red Velvet', 375],
-  ['Classic Fudge', 325], ['Nutella Swirl', 325], ['Biscoff Brownies', 325], ['Oreo Cheesecake Brownies', 325], ['Turtle Brownies', 325],
+  ['Classic Fudge', 325], ['Nutella Swirl', 325], ['Biscoff Brownies', 325], ['Brookie', 325], ['Oreo Cheesecake Brownies', 325], ['Turtle Brownies', 325],
   ['Classic Glazed', 325], ['Biscoff Drizzle', 375], ['Strawberry Cheesecake', 400], ['Cookies & Cream', 450], ['Sugar Cheesecake', 450],
   ['Chocolate Luxe', 899], ['Strawberry Shortcake', 1099], ['Biscoff Crunch', 1099], ['Lemon Cake', 899], ['Nutella Dream', 899], ['Confetti Cake', 899],
   ['White Bread', 799], ['Honey Butter Bread', 999], ['Garlic Herb Bread', 999], ['Chocolate Chip Banana Bread', 1199], ['Cinnamon Swirl Bread', 1199],
   ['Cinnamon Sugar Pull-Apart', 1799], ['Garlic Parmesan Pull-Apart', 1999], ['Pizza Bread', 1999],
-  ['Chocolate Drizzle', 69], ['Nutella Drizzle', 69], ['Oreo Crumble', 69], ['Extra Filling', 69]
+  ['Chocolate Drizzle', 69], ['Nutella Drizzle', 69], ['Oreo Crumble', 69], ['M&M Topping', 69], ['Extra Filling', 69]
 ]);
 
-function deliveryFeeCents(orderType, milesValue) {
-  const miles = Number(milesValue || 0);
-  if (orderType !== 'Local Delivery') return 0;
-  if (miles <= 5) return 500;
-  if (miles <= 10) return 800;
-  if (miles <= 15) return 1000;
-  if (miles <= 20) return 1500;
+function serviceFeeCents(orderType) {
+  if (orderType === 'Local Delivery') return 1500;
+  if (orderType === 'Mail Shipping') return 1200;
   return 0;
+}
+
+function serviceFeeName(orderType) {
+  if (orderType === 'Local Delivery') return 'Local Delivery Fee';
+  if (orderType === 'Mail Shipping') return 'Shipping Fee';
+  return 'Service Fee';
+}
+
+function tipCents(value) {
+  const dollars = Number(value || 0);
+  if (!Number.isFinite(dollars) || dollars <= 0) return 0;
+  return Math.round(dollars * 100);
 }
 
 module.exports = async function handler(req, res) {
@@ -41,6 +49,9 @@ module.exports = async function handler(req, res) {
 
     if (!items.length) return res.status(400).json({ error: 'Cart is empty.' });
     if (!customer.email) return res.status(400).json({ error: 'Customer email is required.' });
+    if (customer.orderType === 'Mail Shipping' && items.some((item) => String(item.name || '').toLowerCase().includes('cheesecake'))) {
+      return res.status(400).json({ error: 'Cheesecake items are not available for shipping. Please choose Pickup or Local Delivery.' });
+    }
 
     const line_items = items.map((item) => {
       const unit_amount = MENU.get(item.name);
@@ -56,14 +67,26 @@ module.exports = async function handler(req, res) {
       };
     });
 
-    const delivery = deliveryFeeCents(customer.orderType, customer.miles);
-    if (delivery > 0) {
+    const serviceFee = serviceFeeCents(customer.orderType);
+    if (serviceFee > 0) {
       line_items.push({
         quantity: 1,
         price_data: {
           currency: 'usd',
-          unit_amount: delivery,
-          product_data: { name: 'Local Delivery Fee' }
+          unit_amount: serviceFee,
+          product_data: { name: serviceFeeName(customer.orderType) }
+        }
+      });
+    }
+
+    const tip = tipCents(order.tip);
+    if (tip > 0) {
+      line_items.push({
+        quantity: 1,
+        price_data: {
+          currency: 'usd',
+          unit_amount: tip,
+          product_data: { name: 'Optional Tip' }
         }
       });
     }
@@ -87,7 +110,9 @@ module.exports = async function handler(req, res) {
         order_type: String(customer.orderType || '').slice(0, 500),
         preferred_date: String(customer.date || '').slice(0, 500),
         preferred_time: String(customer.time || '').slice(0, 500),
-        notes: String(customer.notes || '').slice(0, 500)
+        notes: String(customer.notes || '').slice(0, 500),
+        service_fee: String(serviceFee),
+        tip: String(tip)
       }
     });
 
