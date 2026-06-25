@@ -10,6 +10,7 @@ const menu=[
 let cart=JSON.parse(localStorage.getItem('sst_cart_final')||'[]');
 let orders=JSON.parse(localStorage.getItem('sst_orders_final')||'[]');
 let activeCat='All';
+let calculatedDelivery={fee:0,miles:null,available:false,address:''};
 const money=n=>'$'+Number(n||0).toFixed(2);
 const cats=['All',...new Set(menu.map(x=>x.cat))];
 function init(){setupTipOptions();document.getElementById('categoryTabs').innerHTML=cats.map(c=>`<button class="${c===activeCat?'active':''}" onclick="setCat('${c}')">${c}</button>`).join('');renderMenu();renderCart();renderAdmin();setMinDate();}
@@ -25,7 +26,7 @@ function saveCart(){localStorage.setItem('sst_cart_final',JSON.stringify(cart));
 function subtotal(){return cart.reduce((s,x)=>s+x.price*x.qty,0)}
 function deliveryFee(){
   let type=document.getElementById('orderType')?.value;
-  if(type==='Local Delivery') return 15;
+  if(type==='Local Delivery') return Number(calculatedDelivery.fee||0)/100;
   if(type==='Mail Shipping') return 12;
   return 0;
 }
@@ -56,22 +57,61 @@ function toggleCart(force){let open=force===undefined?!document.getElementById('
 function updateDeliveryFields(){
   let type=document.getElementById('orderType').value;
   let show=type!=='Pickup';
-  document.getElementById('deliveryFields').classList.toggle('hidden',!show);
-  const miles=document.getElementById('miles');
-  if(miles){
-    const label=miles.closest('label');
-    if(label){
-      if(type==='Local Delivery') label.innerHTML='Delivery Fee<input value="$15 flat local delivery fee. Delivery is available within 20 miles. We may contact you if the address is outside the service area." readonly>';
-      if(type==='Mail Shipping') label.innerHTML='Shipping Fee<input value="$12 flat shipping fee. Shipping is available for mail-friendly treats only. Cheesecake items are pickup or local delivery only." readonly>';
-    }
+  const fields=document.getElementById('deliveryFields');
+  fields.classList.toggle('hidden',!show);
+  let estimator=document.getElementById('deliveryEstimator');
+  if(!estimator){
+    estimator=document.createElement('div');
+    estimator.id='deliveryEstimator';
+    estimator.className='note';
+    fields.appendChild(estimator);
+  }
+  calculatedDelivery={fee:0,miles:null,available:false,address:''};
+  if(type==='Local Delivery'){
+    estimator.innerHTML='Enter the full delivery address, then click <button type="button" class="btn secondary" onclick="calculateDeliveryFee(true)">Calculate Delivery Fee</button><br><small>Delivery is estimated from 3323 Mountainbrook Ave, North Charleston, SC 29420. Delivery is available within 20 miles.</small>';
+  }else if(type==='Mail Shipping'){
+    estimator.innerHTML='Mail shipping is a flat <b>$12.00</b>. Cheesecake items cannot be shipped.';
+  }else{
+    estimator.innerHTML='';
   }
   renderCart();
+}
+
+async function calculateDeliveryFee(showAlert=true){
+  const address=document.querySelector('[name="address"]')?.value?.trim();
+  const estimator=document.getElementById('deliveryEstimator');
+  if(!address){ if(showAlert) alert('Please enter the full delivery address first.'); return false; }
+  if(estimator) estimator.innerHTML='Calculating delivery distance...';
+  try{
+    const res=await fetch('/api/delivery-distance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address})});
+    const data=await res.json();
+    if(!res.ok || !data.available){
+      calculatedDelivery={fee:0,miles:data.miles||null,available:false,address};
+      if(estimator) estimator.innerHTML=`<b>Local delivery unavailable.</b><br>${data.error||'This address appears to be outside the 20-mile delivery area.'}<br><small>Please choose Pickup or Mail Shipping if your items can be shipped.</small>`;
+      renderCart();
+      return false;
+    }
+    calculatedDelivery={fee:data.feeCents,miles:data.miles,available:true,address};
+    if(estimator) estimator.innerHTML=`Estimated distance: <b>${data.miles.toFixed(1)} miles</b><br>Delivery fee: <b>${money(data.feeCents/100)}</b><br><small>This fee will be added at secure checkout.</small>`;
+    renderCart();
+    return true;
+  }catch(err){
+    calculatedDelivery={fee:0,miles:null,available:false,address};
+    if(estimator) estimator.innerHTML='Could not calculate delivery right now. Please check the address or choose Pickup.';
+    if(showAlert) alert('Could not calculate delivery fee: '+err.message);
+    renderCart();
+    return false;
+  }
 }
 async function submitOrder(e){
   e.preventDefault();
   if(!cart.length){alert('Please add at least one item to the cart.');return}
   const selectedType=document.getElementById('orderType')?.value;
   if(selectedType==='Mail Shipping' && hasNoShippingItem()){alert('Cheesecake items are not available for shipping. Please choose Pickup or Local Delivery, or remove cheesecake items from your cart.');return}
+  if(selectedType==='Local Delivery'){
+    const ok=await calculateDeliveryFee(false);
+    if(!ok){alert('Local delivery is only available within 20 miles. Please enter a valid local delivery address or choose Pickup.');return}
+  }
   const form=e.target;
   const button=form.querySelector('button[type="submit"]');
   const originalText=button ? button.textContent : '';

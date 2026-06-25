@@ -1,4 +1,5 @@
 const Stripe = require('stripe');
+const { calculateDelivery } = require('./delivery-distance');
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -14,22 +15,19 @@ const MENU = new Map([
   ['Chocolate Drizzle', 69], ['Nutella Drizzle', 69], ['Oreo Crumble', 69], ['M&M Topping', 69], ['Extra Filling', 69]
 ]);
 
-function serviceFeeCents(orderType) {
-  if (orderType === 'Local Delivery') return 1500;
+function shippingFeeCents(orderType) {
   if (orderType === 'Mail Shipping') return 1200;
   return 0;
-}
-
-function serviceFeeName(orderType) {
-  if (orderType === 'Local Delivery') return 'Local Delivery Fee';
-  if (orderType === 'Mail Shipping') return 'Shipping Fee';
-  return 'Service Fee';
 }
 
 function tipCents(value) {
   const dollars = Number(value || 0);
   if (!Number.isFinite(dollars) || dollars <= 0) return 0;
   return Math.round(dollars * 100);
+}
+
+function hasNoShippingItem(items) {
+  return items.some((item) => String(item.name || '').toLowerCase().includes('cheesecake'));
 }
 
 module.exports = async function handler(req, res) {
@@ -49,7 +47,7 @@ module.exports = async function handler(req, res) {
 
     if (!items.length) return res.status(400).json({ error: 'Cart is empty.' });
     if (!customer.email) return res.status(400).json({ error: 'Customer email is required.' });
-    if (customer.orderType === 'Mail Shipping' && items.some((item) => String(item.name || '').toLowerCase().includes('cheesecake'))) {
+    if (customer.orderType === 'Mail Shipping' && hasNoShippingItem(items)) {
       return res.status(400).json({ error: 'Cheesecake items are not available for shipping. Please choose Pickup or Local Delivery.' });
     }
 
@@ -67,14 +65,30 @@ module.exports = async function handler(req, res) {
       };
     });
 
-    const serviceFee = serviceFeeCents(customer.orderType);
+    let serviceFee = 0;
+    let serviceName = 'Service Fee';
+    let deliveryMiles = '';
+
+    if (customer.orderType === 'Local Delivery') {
+      const delivery = await calculateDelivery(customer.address || '');
+      if (!delivery.available) {
+        return res.status(400).json({ error: 'This address is outside the 20-mile local delivery area. Please choose Pickup or Mail Shipping if eligible.' });
+      }
+      serviceFee = delivery.feeCents;
+      deliveryMiles = delivery.miles.toFixed(1);
+      serviceName = `Local Delivery Fee (${deliveryMiles} miles)`;
+    } else if (customer.orderType === 'Mail Shipping') {
+      serviceFee = shippingFeeCents(customer.orderType);
+      serviceName = 'Shipping Fee';
+    }
+
     if (serviceFee > 0) {
       line_items.push({
         quantity: 1,
         price_data: {
           currency: 'usd',
           unit_amount: serviceFee,
-          product_data: { name: serviceFeeName(customer.orderType) }
+          product_data: { name: serviceName }
         }
       });
     }
@@ -98,9 +112,7 @@ module.exports = async function handler(req, res) {
       customer_email: customer.email,
       phone_number_collection: { enabled: true },
       billing_address_collection: 'auto',
-      shipping_address_collection: customer.orderType === 'Pickup' ? undefined : {
-        allowed_countries: ['US']
-      },
+      shipping_address_collection: customer.orderType === 'Pickup' ? undefined : { allowed_countries: ['US'] },
       success_url: `${origin}/success.html?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/#checkout`,
       metadata: {
@@ -108,10 +120,12 @@ module.exports = async function handler(req, res) {
         customer_name: String(customer.name || '').slice(0, 500),
         phone: String(customer.phone || '').slice(0, 500),
         order_type: String(customer.orderType || '').slice(0, 500),
+        address: String(customer.address || '').slice(0, 500),
         preferred_date: String(customer.date || '').slice(0, 500),
         preferred_time: String(customer.time || '').slice(0, 500),
         notes: String(customer.notes || '').slice(0, 500),
         service_fee: String(serviceFee),
+        delivery_miles: String(deliveryMiles),
         tip: String(tip)
       }
     });
