@@ -15,7 +15,7 @@
     <a class="brand" href="#home"><span>Share's</span><small>Sweet Treats</small></a>
     <button class="mobile-menu" onclick="toggleMenu()">☰</button>
     <nav id="navLinks">
-      <a href="#menu">Menu</a><a href="#how">How it Works</a><a href="#delivery">Delivery</a><a href="#rewards">Rewards</a><a href="#admin">Owner</a>
+      <a href="#menu">Menu</a><a href="#how">How it Works</a><a href="#delivery">Delivery</a><a href="#rewards">Rewards</a><a href="#custom">Custom Orders</a>
     </nav>
     <button class="cart-btn" onclick="toggleCart(true)">🛒 Cart <b id="cartCount">0</b></button>
   </header>
@@ -39,7 +39,7 @@
       <div><b>Freshly Made</b><span>Made to order with love.</span></div>
       <div><b>Easy Checkout</b><span>Cart, delivery, shipping and pickup.</span></div>
       <div><b>Order Updates</b><span>Email and text confirmation ready.</span></div>
-      <div><b>Owner Dashboard</b><span>Track orders and revenue.</span></div>
+      <div><b>Thank You Updates</b><span>Customers receive branded confirmations.</span></div>
     </section>
 
     <section id="menu" class="section">
@@ -123,29 +123,6 @@
       <div id="confirmation" class="confirmation hidden"></div>
     </section>
 
-    <section class="section setup-panel">
-      <p class="eyebrow">Before going live</p>
-      <h2>Launch Setup Checklist</h2>
-      <div class="check-grid">
-        <label><input type="checkbox"> Buy domain name</label>
-        <label><input type="checkbox"> Create Stripe or Square account</label>
-        <label><input type="checkbox"> Create PayPal Business</label>
-        <label><input type="checkbox"> Add Cash App / Venmo Business handles</label>
-        <label><input type="checkbox"> Create business email</label>
-        <label><input type="checkbox"> Add real product photos</label>
-        <label><input type="checkbox"> Publish website to Netlify/Vercel</label>
-        <label><input type="checkbox"> Connect email/SMS notifications</label>
-      </div>
-    </section>
-
-    <section id="admin" class="section admin-panel">
-      <p class="eyebrow">Private owner dashboard preview</p>
-      <h2>Owner Dashboard</h2>
-      <div class="stats"><div><b id="adminOrders">0</b><span>Orders</span></div><div><b id="adminRevenue">$0.00</b><span>Revenue</span></div><div><b id="adminCustomers">0</b><span>Customers</span></div><div><b id="adminAverage">$0.00</b><span>Avg Order</span></div></div>
-      <div class="dashboard-actions"><button onclick="exportOrders()" class="btn secondary">Export Orders CSV</button><button onclick="clearOrders()" class="btn ghost">Clear Test Orders</button></div>
-      <div id="ordersList" class="orders-list"></div>
-      <p class="note">This dashboard works for testing in your browser. For real customers, connect a database, payment processor, email, and SMS service after your domain is ready.</p>
-    </section>
   </main>
 
   <aside class="cart" id="cartPanel">
