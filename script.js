@@ -28,8 +28,55 @@ function total(){return subtotal()+deliveryFee()}
 function renderCart(){const count=cart.reduce((s,x)=>s+x.qty,0);document.getElementById('cartCount').textContent=count;document.getElementById('cartItems').innerHTML=cart.length?cart.map(x=>`<div class="cart-item"><b>${x.name}</b><br><small>${money(x.price)} each</small><div class="qty"><button onclick="changeQty('${escapeName(x.name)}',-1)">-</button><span>${x.qty}</span><button onclick="changeQty('${escapeName(x.name)}',1)">+</button><strong>${money(x.price*x.qty)}</strong></div></div>`).join(''):'<p>Your cart is empty. Add treats from the menu.</p>';document.getElementById('cartSubtotal').textContent=money(subtotal());document.getElementById('cartDelivery').textContent=money(deliveryFee());document.getElementById('cartTotal').textContent=money(total());const co=document.getElementById('checkoutTotal');if(co)co.textContent=money(total())}
 function toggleCart(force){let open=force===undefined?!document.getElementById('cartPanel').classList.contains('open'):force;document.getElementById('cartPanel').classList.toggle('open',open);document.getElementById('overlay').classList.toggle('show',open)}
 function updateDeliveryFields(){let show=document.getElementById('orderType').value!=='Pickup';document.getElementById('deliveryFields').classList.toggle('hidden',!show);renderCart()}
-function submitOrder(e){e.preventDefault();if(!cart.length){alert('Please add at least one item to the cart.');return}let data=Object.fromEntries(new FormData(e.target).entries());let order={id:'SST-'+Date.now().toString().slice(-6),created:new Date().toLocaleString(),customer:data,items:[...cart],subtotal:subtotal(),delivery:deliveryFee(),total:total(),status:'Order Received'};orders.unshift(order);localStorage.setItem('sst_orders_final',JSON.stringify(orders));cart=[];saveCart();renderAdmin();let summary=order.items.map(x=>`${x.qty} x ${x.name}`).join(', ');let msg=`Thank you ${data.name}! Your Share's Sweet Treats order ${order.id} was received. Total: ${money(order.total)}. Items: ${summary}.`;let email=`mailto:${encodeURIComponent(data.email)}?subject=${encodeURIComponent('Thank you for your Share\'s Sweet Treats order 💗')}&body=${encodeURIComponent(msg+'\n\nMade with love, baked fresh. Thank you for supporting my small business!')}`;let sms=`sms:${data.phone}?&body=${encodeURIComponent(msg)}`;document.getElementById('confirmation').classList.remove('hidden');document.getElementById('confirmation').innerHTML=`<h3>Order request received 💗</h3><p><b>Order:</b> ${order.id}</p><p>${msg}</p><p><a class="btn secondary" href="${email}">Send thank-you email</a> <a class="btn secondary" href="${sms}">Send thank-you text</a></p><p class="note">Launch note: for automatic sending, connect EmailJS/Formspree for email and Twilio for SMS.</p>`;e.target.reset();updateDeliveryFields();location.hash='confirmation'}
-function renderAdmin(){const revenue=orders.reduce((s,o)=>s+Number(o.total),0);document.getElementById('adminOrders').textContent=orders.length;document.getElementById('adminRevenue').textContent=money(revenue);document.getElementById('adminCustomers').textContent=new Set(orders.map(o=>o.customer.email)).size;document.getElementById('adminAverage').textContent=money(orders.length?revenue/orders.length:0);document.getElementById('ordersList').innerHTML=orders.length?orders.map(o=>`<div class="order-card"><b>${o.id} • ${o.customer.name} • ${money(o.total)}</b><p>${o.items.map(i=>i.qty+' x '+i.name).join(', ')}</p><small>${o.customer.orderType} • ${o.customer.phone} • ${o.status} • ${o.created}</small><br><small>${o.customer.address||''}</small></div>`).join(''):'<p>No test orders yet. Place a sample order to test the flow.</p>'}
+async function submitOrder(e){
+  e.preventDefault();
+  if(!cart.length){alert('Please add at least one item to the cart.');return}
+  const form=e.target;
+  const button=form.querySelector('button[type="submit"]');
+  const originalText=button ? button.textContent : '';
+  if(button){button.disabled=true;button.textContent='Opening secure checkout...'}
+  try{
+    let data=Object.fromEntries(new FormData(form).entries());
+    const order={
+      id:'SST-'+Date.now().toString().slice(-6),
+      created:new Date().toLocaleString(),
+      customer:data,
+      items:[...cart],
+      subtotal:subtotal(),
+      delivery:deliveryFee(),
+      total:total(),
+      status:'Awaiting Stripe Payment'
+    };
+    localStorage.setItem('sst_pending_order',JSON.stringify(order));
+    const response=await fetch('/api/checkout',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(order)
+    });
+    const result=await response.json();
+    if(!response.ok || !result.url){
+      throw new Error(result.error || 'Checkout could not be started.');
+    }
+    window.location.href=result.url;
+  }catch(err){
+    alert('Stripe checkout error: '+err.message);
+    if(button){button.disabled=false;button.textContent=originalText}
+  }
+}
+function renderAdmin(){
+  const adminOrders=document.getElementById('adminOrders');
+  const adminRevenue=document.getElementById('adminRevenue');
+  const adminCustomers=document.getElementById('adminCustomers');
+  const adminAverage=document.getElementById('adminAverage');
+  const ordersList=document.getElementById('ordersList');
+  if(!adminOrders || !adminRevenue || !adminCustomers || !adminAverage || !ordersList) return;
+  const revenue=orders.reduce((s,o)=>s+Number(o.total),0);
+  adminOrders.textContent=orders.length;
+  adminRevenue.textContent=money(revenue);
+  adminCustomers.textContent=new Set(orders.map(o=>o.customer.email)).size;
+  adminAverage.textContent=money(orders.length?revenue/orders.length:0);
+  ordersList.innerHTML=orders.length?orders.map(o=>`<div class="order-card"><b>${o.id} • ${o.customer.name} • ${money(o.total)}</b><p>${o.items.map(i=>i.qty+' x '+i.name).join(', ')}</p><small>${o.customer.orderType} • ${o.customer.phone} • ${o.status} • ${o.created}</small><br><small>${o.customer.address||''}</small></div>`).join(''):'<p>No test orders yet. Place a sample order to test the flow.</p>'
+}
 function exportOrders(){if(!orders.length){alert('No orders to export yet.');return}const rows=[['Order ID','Date','Customer','Email','Phone','Order Type','Items','Subtotal','Delivery','Total','Status']];orders.forEach(o=>rows.push([o.id,o.created,o.customer.name,o.customer.email,o.customer.phone,o.customer.orderType,o.items.map(i=>`${i.qty} x ${i.name}`).join('; '),o.subtotal,o.delivery,o.total,o.status]));const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n');const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='shares-sweet-treats-orders.csv';a.click()}
 function clearOrders(){if(confirm('Clear test orders from this browser?')){orders=[];localStorage.setItem('sst_orders_final','[]');renderAdmin()}}
 init();

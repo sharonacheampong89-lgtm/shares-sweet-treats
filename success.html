@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment Successful | Share's Sweet Treats</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="section checkout-section" style="min-height:70vh;display:grid;place-items:center;">
+    <div class="confirmation" style="max-width:720px;">
+      <h1>Thank you for your order 💗</h1>
+      <p>Your payment was successful. Share's Sweet Treats has received your order.</p>
+      <p>Please keep your Stripe receipt for your records.</p>
+      <a class="btn primary" href="/">Back to Home</a>
+    </div>
+  </main>
+  <script>
+    localStorage.removeItem('sst_cart_final');
+    localStorage.removeItem('sst_pending_order');
+  </script>
+</body>
+</html>
