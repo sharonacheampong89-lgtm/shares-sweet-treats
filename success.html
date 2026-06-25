@@ -3,21 +3,48 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Payment Successful | Share's Sweet Treats</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>Order Confirmed | Share's Sweet Treats</title>
+  <style>
+    body{font-family:Arial, sans-serif;background:#fff5f8;color:#3b1d2b;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px}
+    .card{max-width:620px;background:#fff;border:1px solid #ffd3df;border-radius:24px;padding:32px;box-shadow:0 20px 60px rgba(155,36,87,.12);text-align:center}
+    h1{color:#a62b63;font-size:34px;margin:0 0 12px}
+    p{font-size:17px;line-height:1.6}
+    .status{margin-top:18px;padding:14px;border-radius:14px;background:#fff0f5;font-weight:700}
+    a{display:inline-block;margin-top:18px;background:#a62b63;color:white;text-decoration:none;padding:13px 22px;border-radius:999px;font-weight:700}
+  </style>
 </head>
 <body>
-  <main class="section checkout-section" style="min-height:70vh;display:grid;place-items:center;">
-    <div class="confirmation" style="max-width:720px;">
-      <h1>Thank you for your order 💗</h1>
-      <p>Your payment was successful. Share's Sweet Treats has received your order.</p>
-      <p>Please keep your Stripe receipt for your records.</p>
-      <a class="btn primary" href="/">Back to Home</a>
-    </div>
-  </main>
+  <div class="card">
+    <h1>Thank you for your order! 💗</h1>
+    <p>Your payment was received. Share's Sweet Treats will begin preparing your order details.</p>
+    <p>You should receive a confirmation email shortly.</p>
+    <div id="emailStatus" class="status">Sending confirmation emails...</div>
+    <a href="/">Back to Home</a>
+  </div>
+
   <script>
-    localStorage.removeItem('sst_cart_final');
-    localStorage.removeItem('sst_pending_order');
+    async function sendOrderEmails() {
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get('session_id');
+      const status = document.getElementById('emailStatus');
+
+      if (!sessionId) {
+        status.textContent = 'Order confirmed. No session ID found for email details.';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/send-order-emails?session_id=' + encodeURIComponent(sessionId));
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Email sending failed.');
+        status.textContent = 'Confirmation emails sent successfully.';
+      } catch (error) {
+        console.error(error);
+        status.textContent = 'Order confirmed. Email may be delayed, but your payment was successful.';
+      }
+    }
+
+    sendOrderEmails();
   </script>
 </body>
 </html>
