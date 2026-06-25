@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Share's Sweet Treats | Order Online</title>
+  <meta name="description" content="Order homemade cookies, cupcakes, brownies, cinnamon rolls, mini cakes, breads and custom treats from Share's Sweet Treats." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:wght@500;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#home"><span>Share's</span><small>Sweet Treats</small></a>
+    <button class="mobile-menu" onclick="toggleMenu()">☰</button>
+    <nav id="navLinks">
+      <a href="#menu">Menu</a><a href="#how">How it Works</a><a href="#delivery">Delivery</a><a href="#rewards">Rewards</a><a href="#admin">Owner</a>
+    </nav>
+    <button class="cart-btn" onclick="toggleCart(true)">🛒 Cart <b id="cartCount">0</b></button>
+  </header>
+
+  <main id="home">
+    <section class="hero">
+      <div class="hero-text">
+        <p class="eyebrow">Homemade • Fresh • Made with Love</p>
+        <h1>Order sweet treats for pickup, delivery, or shipping.</h1>
+        <p>Cookies, cupcakes, brownies, cinnamon rolls, personal mini cakes, breads, pull-apart breads and custom desserts for your sweetest moments.</p>
+        <div class="hero-actions"><a class="btn primary" href="#menu">Start an Order</a><a class="btn secondary" href="#custom">Request Custom Order</a></div>
+        <div class="quick-info"><span>🚗 20-mile delivery</span><span>📦 Mail shipping</span><span>💳 Secure payments ready</span></div>
+      </div>
+      <div class="hero-card">
+        <img src="assets/brand-kit.png" alt="Share's Sweet Treats branding" />
+        <div class="promo-card"><h2>Grand Opening Special</h2><p>Spend $30+ and receive a free Treat Box while supplies last.</p></div>
+      </div>
+    </section>
+
+    <section class="trust-grid">
+      <div><b>Freshly Made</b><span>Made to order with love.</span></div>
+      <div><b>Easy Checkout</b><span>Cart, delivery, shipping and pickup.</span></div>
+      <div><b>Order Updates</b><span>Email and text confirmation ready.</span></div>
+      <div><b>Owner Dashboard</b><span>Track orders and revenue.</span></div>
+    </section>
+
+    <section id="menu" class="section">
+      <p class="eyebrow">Click any item to order</p>
+      <h2>Online Menu</h2>
+      <div class="menu-tools">
+        <input id="searchBox" oninput="renderMenu()" placeholder="Search cookies, cupcakes, brownies..." />
+        <select id="sortBox" onchange="renderMenu()"><option value="featured">Featured</option><option value="low">Price: Low to High</option><option value="high">Price: High to Low</option></select>
+      </div>
+      <div class="category-tabs" id="categoryTabs"></div>
+      <div class="menu-grid" id="menuGrid"></div>
+    </section>
+
+    <section id="how" class="section steps">
+      <p class="eyebrow">Simple ordering process</p>
+      <h2>How It Works</h2>
+      <div class="step-grid">
+        <div><span>1</span><h3>Choose Treats</h3><p>Add your favorite items to the cart and choose quantities.</p></div>
+        <div><span>2</span><h3>Select Pickup, Delivery, or Shipping</h3><p>Delivery is available within 20 miles for a fee. Shipping is available for mail-friendly treats.</p></div>
+        <div><span>3</span><h3>Pay Securely</h3><p>Connect Stripe, Square, PayPal, Cash App Pay, Venmo Business, Apple Pay, Google Pay, debit or credit card.</p></div>
+        <div><span>4</span><h3>Receive Updates</h3><p>Customers receive confirmation and a thank-you message by email or text.</p></div>
+      </div>
+    </section>
+
+    <section id="delivery" class="section two-col">
+      <div>
+        <p class="eyebrow">Pickup • Local Delivery • Mail Shipping</p>
+        <h2>Delivery & Shipping Options</h2>
+        <p><b>Pickup:</b> Customers choose their preferred pickup date and time.</p>
+        <p><b>Local delivery:</b> Available within <b>20 miles</b>. Customers enter their full address and choose their delivery distance range.</p>
+        <p><b>Mail shipping:</b> Available for cookies, brownies, breads and other treats that ship well.</p>
+      </div>
+      <div class="fee-card">
+        <h3>Delivery Fee Guide</h3>
+        <p><b>0–5 miles:</b> $5</p><p><b>6–10 miles:</b> $8</p><p><b>11–15 miles:</b> $10</p><p><b>16–20 miles:</b> $15</p>
+        <small>You can edit these fees anytime in the code or future admin dashboard.</small>
+      </div>
+    </section>
+
+    <section id="custom" class="section custom-box">
+      <p class="eyebrow">Custom orders welcome</p>
+      <h2>Need something special?</h2>
+      <p>Birthdays, weddings, showers, events, colors, flavors, themes, toppings and packaging can be customized. Please allow at least 48 hours for custom orders.</p>
+      <a class="btn primary" href="#checkout">Start Custom Request</a>
+    </section>
+
+    <section id="rewards" class="section rewards">
+      <div><h2>Rewards</h2><p>Earn points for every order, unlock birthday rewards, and receive discounts for repeat purchases.</p></div>
+      <div><h2>Reviews</h2><p>Customers can leave ratings and testimonials to help build trust for your brand.</p></div>
+      <div><h2>Promotions</h2><p>Grand opening discounts, holiday specials, coupon codes, free delivery promos and referral rewards.</p></div>
+    </section>
+
+    <section id="checkout" class="section checkout-section">
+      <p class="eyebrow">Checkout</p>
+      <h2>Place Your Order Request</h2>
+      <form id="orderForm" onsubmit="submitOrder(event)">
+        <div class="form-grid">
+          <label>Full Name<input required name="name" placeholder="Customer name"></label>
+          <label>Email<input required type="email" name="email" placeholder="customer@email.com"></label>
+          <label>Phone<input required name="phone" placeholder="Phone number"></label>
+          <label>Order Type<select name="orderType" id="orderType" onchange="updateDeliveryFields()"><option>Pickup</option><option>Local Delivery</option><option>Mail Shipping</option></select></label>
+          <label>Preferred Date<input type="date" name="date" required></label>
+          <label>Preferred Time<input type="time" name="time" required></label>
+        </div>
+        <div id="deliveryFields" class="delivery-fields hidden">
+          <label>Delivery / Shipping Address<input name="address" placeholder="Street, apartment, city, state, ZIP"></label>
+          <label>Distance Range<select id="miles" name="miles" onchange="renderCart()"><option value="0">Shipping / Not Sure</option><option value="5">0–5 miles</option><option value="10">6–10 miles</option><option value="15">11–15 miles</option><option value="20">16–20 miles</option></select></label>
+        </div>
+        <label>Special Instructions<textarea name="notes" placeholder="Allergies, colors, packaging, pickup or delivery instructions..."></textarea></label>
+        <div class="payment-options">
+          <h3>Payment Method</h3>
+          <label><input type="radio" name="payment" value="Card / Apple Pay / Google Pay" checked> Card / Apple Pay / Google Pay</label>
+          <label><input type="radio" name="payment" value="Cash App"> Cash App</label>
+          <label><input type="radio" name="payment" value="Venmo"> Venmo</label>
+          <label><input type="radio" name="payment" value="PayPal"> PayPal</label>
+          <p class="note">Launch note: connect Stripe/Square/PayPal for real payments. Never collect card or bank numbers directly on this website.</p>
+        </div>
+        <div class="checkout-summary"><span>Estimated checkout total:</span><b id="checkoutTotal">$0.00</b></div>
+        <button class="btn primary" type="submit">Place Order Request</button>
+      </form>
+      <div id="confirmation" class="confirmation hidden"></div>
+    </section>
+
+    <section class="section setup-panel">
+      <p class="eyebrow">Before going live</p>
+      <h2>Launch Setup Checklist</h2>
+      <div class="check-grid">
+        <label><input type="checkbox"> Buy domain name</label>
+        <label><input type="checkbox"> Create Stripe or Square account</label>
+        <label><input type="checkbox"> Create PayPal Business</label>
+        <label><input type="checkbox"> Add Cash App / Venmo Business handles</label>
+        <label><input type="checkbox"> Create business email</label>
+        <label><input type="checkbox"> Add real product photos</label>
+        <label><input type="checkbox"> Publish website to Netlify/Vercel</label>
+        <label><input type="checkbox"> Connect email/SMS notifications</label>
+      </div>
+    </section>
+
+    <section id="admin" class="section admin-panel">
+      <p class="eyebrow">Private owner dashboard preview</p>
+      <h2>Owner Dashboard</h2>
+      <div class="stats"><div><b id="adminOrders">0</b><span>Orders</span></div><div><b id="adminRevenue">$0.00</b><span>Revenue</span></div><div><b id="adminCustomers">0</b><span>Customers</span></div><div><b id="adminAverage">$0.00</b><span>Avg Order</span></div></div>
+      <div class="dashboard-actions"><button onclick="exportOrders()" class="btn secondary">Export Orders CSV</button><button onclick="clearOrders()" class="btn ghost">Clear Test Orders</button></div>
+      <div id="ordersList" class="orders-list"></div>
+      <p class="note">This dashboard works for testing in your browser. For real customers, connect a database, payment processor, email, and SMS service after your domain is ready.</p>
+    </section>
+  </main>
+
+  <aside class="cart" id="cartPanel">
+    <div class="cart-header"><h2>Your Order</h2><button onclick="toggleCart(false)">×</button></div>
+    <div id="cartItems"></div>
+    <div class="cart-total"><span>Subtotal</span><b id="cartSubtotal">$0.00</b></div>
+    <div class="cart-total"><span>Delivery Fee</span><b id="cartDelivery">$0.00</b></div>
+    <div class="cart-total grand"><span>Estimated Total</span><b id="cartTotal">$0.00</b></div>
+    <a class="btn primary full" href="#checkout" onclick="toggleCart(false)">Checkout</a>
+  </aside>
+  <div class="overlay" id="overlay" onclick="toggleCart(false)"></div>
+
+  <footer>
+    <b>Share's Sweet Treats</b><br>Made with love, baked fresh • Thank you for supporting my small business 💗
+  </footer>
+  <script src="script.js"></script>
+</body>
+</html>
