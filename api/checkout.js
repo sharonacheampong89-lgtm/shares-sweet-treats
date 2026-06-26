@@ -1,19 +1,15 @@
 const Stripe = require('stripe');
+const { createClient } = require('@supabase/supabase-js');
 const { calculateDelivery } = require('./delivery-distance');
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-const MENU = new Map([
-  ['Classic Chocolate Chip', 325], ['Biscoff Cookie Butter', 325], ['Nutella Lava', 350], ['S’mores', 350],
-  ['Strawberry Crunch', 325], ['Red Velvet White Chocolate', 325], ['Brown Butter Pecan', 350], ['Cookie Monster', 325], ['Lemon Sugar', 325],
-  ['Vanilla Bean', 325], ['Chocolate Fudge', 325], ['Strawberry Crunch', 350], ['Biscoff Dream', 350], ['Nutella Hazelnut', 375], ['Banana Pudding', 375], ['Red Velvet', 375],
-  ['Classic Fudge', 325], ['Nutella Swirl', 325], ['Biscoff Brownies', 325], ['Brookie', 325], ['Oreo Cheesecake Brownies', 325], ['Turtle Brownies', 325],
-  ['Classic Glazed', 325], ['Biscoff Drizzle', 375], ['Strawberry Cheesecake', 400], ['Cookies & Cream', 450], ['Sugar Cheesecake', 450],
-  ['Chocolate Luxe', 899], ['Strawberry Shortcake', 1099], ['Biscoff Crunch', 1099], ['Lemon Cake', 899], ['Nutella Dream', 899], ['Confetti Cake', 899],
-  ['White Bread', 799], ['Honey Butter Bread', 999], ['Garlic Herb Bread', 999], ['Chocolate Chip Banana Bread', 1199], ['Cinnamon Swirl Bread', 1199],
-  ['Cinnamon Sugar Pull-Apart', 1799], ['Garlic Parmesan Pull-Apart', 1999], ['Pizza Bread', 1999],
-  ['Chocolate Drizzle', 69], ['Nutella Drizzle', 69], ['Oreo Crumble', 69], ['M&M Topping', 69], ['Extra Filling', 69]
-]);
+function getSupabaseAdmin(){
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+  if(!url || !key) throw new Error('Supabase environment variables are missing.');
+  return createClient(url, key);
+}
 
 function tipCents(value) {
   const dollars = Number(value || 0);
@@ -24,6 +20,17 @@ function tipCents(value) {
 function hasNoShippingItem(items) {
   return items.some((item) => String(item.name || '').toLowerCase().includes('cheesecake'));
 }
+
+function bundlePriceCents(category, bundleType) {
+  const c = String(category || '').toLowerCase();
+  if (c.includes('cookie')) { if (bundleType === 'half_dozen') return 1500; if (bundleType === 'dozen') return 2600; }
+  if (c.includes('cupcake')) { if (bundleType === 'half_dozen') return 1800; if (bundleType === 'dozen') return 3400; }
+  if (c.includes('brownie')) { if (bundleType === 'half_dozen') return 1000; if (bundleType === 'dozen') return 1800; }
+  if (c.includes('cinnamon')) { if (bundleType === 'half_dozen') return 1600; if (bundleType === 'dozen') return 3000; }
+  return null;
+}
+function bundleCount(bundleType) { if (bundleType === 'half_dozen') return 6; if (bundleType === 'dozen') return 12; return 1; }
+function displayBundleType(bundleType) { if (bundleType === 'half_dozen') return 'Half Dozen'; if (bundleType === 'dozen') return 'Dozen'; return ''; }
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -46,24 +53,52 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Cheesecake items are not available for shipping. Please choose Pickup or Local Delivery.' });
     }
 
+    const supabase = getSupabaseAdmin();
+    const names = [...new Set(items.map(item => String(item.baseName || item.name || '').replace(/\s*\((Half Dozen|Dozen)\)\s*$/i,'').trim()).filter(Boolean))];
+    const { data: inventoryRows, error: inventoryError } = await supabase
+      .from('inventory')
+      .select('name,price,stock,sold_out,active')
+      .in('name', names);
+
+    if(inventoryError) throw inventoryError;
+
+    const inventory = new Map((inventoryRows || []).map(row => [row.name, row]));
+
     const line_items = items.map((item) => {
-      const unit_amount = MENU.get(item.name);
-      if (!unit_amount) throw new Error(`Unknown menu item: ${item.name}`);
+      const baseName = String(item.baseName || item.name || '').replace(/\s*\((Half Dozen|Dozen)\)\s*$/i,'').trim();
+      const inv = inventory.get(baseName);
+      if (!inv) throw new Error(`Unknown menu item: ${baseName}`);
+      if (inv.active === false) throw new Error(`${baseName} is not currently available.`);
+      if (inv.sold_out) throw new Error(`${baseName} is currently sold out.`);
+
       const quantity = Math.max(1, Math.min(99, Number(item.qty || 1)));
+      let unitAmount = Math.round(Number(inv.price || 0) * 100);
+      let productName = baseName;
+      let stockNeeded = quantity;
+
+      if (item.bundle && item.bundleType) {
+        const bundleCents = bundlePriceCents(inv.category || item.cat || item.category, item.bundleType);
+        if (!bundleCents) throw new Error(`Invalid bundle option for ${baseName}.`);
+        unitAmount = bundleCents;
+        productName = `${baseName} (${displayBundleType(item.bundleType)})`;
+        stockNeeded = quantity * bundleCount(item.bundleType);
+      }
+
+      if (Number(inv.stock || 0) < stockNeeded) throw new Error(`Only ${inv.stock} available for ${baseName}.`);
+
       return {
         quantity,
         price_data: {
           currency: 'usd',
-          unit_amount,
-          product_data: { name: item.name }
+          unit_amount: unitAmount,
+          product_data: { name: productName }
         }
       };
     });
 
     let serviceFee = 0;
-    let serviceName = '';
+    let serviceName = 'Service Fee';
     let deliveryMiles = '';
-    let shippingQuoteRequired = 'no';
 
     if (customer.orderType === 'Local Delivery') {
       const delivery = await calculateDelivery(customer.address || '');
@@ -74,11 +109,8 @@ module.exports = async function handler(req, res) {
       deliveryMiles = delivery.miles.toFixed(1);
       serviceName = `Local Delivery Fee (${deliveryMiles} miles)`;
     } else if (customer.orderType === 'Mail Shipping') {
-      // Shipping is no longer a flat rate because cost depends on destination, package size, and weight.
-      // Customer pays for items now; shipping will be quoted/invoiced after the order is packed.
       serviceFee = 0;
-      serviceName = '';
-      shippingQuoteRequired = 'yes';
+      serviceName = 'Shipping quoted separately';
     }
 
     if (serviceFee > 0) {
@@ -104,7 +136,6 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const isShipping = customer.orderType === 'Mail Shipping';
     const origin = req.headers.origin || `https://${req.headers.host}`;
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -121,13 +152,13 @@ module.exports = async function handler(req, res) {
         phone: String(customer.phone || '').slice(0, 500),
         order_type: String(customer.orderType || '').slice(0, 500),
         address: String(customer.address || '').slice(0, 500),
-        preferred_date: isShipping ? 'Shipping order - no customer-selected date' : String(customer.date || '').slice(0, 500),
-        preferred_time: isShipping ? 'Shipping order - no customer-selected time' : String(customer.time || '').slice(0, 500),
+        preferred_date: customer.orderType === 'Mail Shipping' ? '' : String(customer.date || '').slice(0, 500),
+        preferred_time: customer.orderType === 'Mail Shipping' ? '' : String(customer.time || '').slice(0, 500),
         notes: String(customer.notes || '').slice(0, 500),
         service_fee: String(serviceFee),
         delivery_miles: String(deliveryMiles),
-        shipping_quote_required: shippingQuoteRequired,
-        tip: String(tip)
+        tip: String(tip),
+        shipping_note: customer.orderType === 'Mail Shipping' ? 'Shipping will be quoted separately after order review and packing.' : ''
       }
     });
 

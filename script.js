@@ -31,6 +31,58 @@ function defaultDescription(category, name){
   return 'Fresh homemade bakery item.';
 }
 
+function bundleOptions(product){
+  const c=String(product.cat||'').toLowerCase();
+  if(c.includes('cookie')) return [
+    {type:'half_dozen', label:'Half Dozen', count:6, price:15},
+    {type:'dozen', label:'Dozen', count:12, price:26}
+  ];
+  if(c.includes('cupcake')) return [
+    {type:'half_dozen', label:'Half Dozen', count:6, price:18},
+    {type:'dozen', label:'Dozen', count:12, price:34}
+  ];
+  if(c.includes('brownie')) return [
+    {type:'half_dozen', label:'Half Dozen', count:6, price:10},
+    {type:'dozen', label:'Dozen', count:12, price:18}
+  ];
+  if(c.includes('cinnamon')) return [
+    {type:'half_dozen', label:'Half Dozen', count:6, price:16},
+    {type:'dozen', label:'Dozen', count:12, price:30}
+  ];
+  return [];
+}
+
+function requiredPrepHours(){
+  let maxHours = 0;
+  cart.forEach(item=>{
+    const c=String(item.cat || item.category || '').toLowerCase();
+    const n=String(item.name || '').toLowerCase();
+    let hours = 8;
+    if(c.includes('bread') || n.includes('bread') || c.includes('cinnamon') || n.includes('cinnamon roll')) hours = 24;
+    if(c.includes('add')) hours = 0;
+    maxHours = Math.max(maxHours, hours);
+  });
+  return maxHours || 8;
+}
+
+function prepMessage(){
+  const hours = requiredPrepHours();
+  if(hours >= 24) return 'Because your cart includes bread or cinnamon rolls, please choose a pickup/delivery time at least 24 hours from now.';
+  return 'Because each order is baked fresh, please choose a pickup/delivery time at least 8 hours from now.';
+}
+
+function validatePrepTime(){
+  const type=document.getElementById('orderType')?.value;
+  if(type === 'Mail Shipping') return true;
+  const date=document.querySelector('[name="date"]')?.value;
+  const time=document.querySelector('[name="time"]')?.value;
+  if(!date || !time){ alert('Please choose a preferred date and time.'); return false; }
+  const selected = new Date(`${date}T${time}`);
+  const min = new Date(Date.now() + requiredPrepHours() * 60 * 60 * 1000);
+  if(selected < min){ alert(prepMessage()); return false; }
+  return true;
+}
+
 async function loadPublicInventory(){
   try{
     const res=await fetch('/api/public-inventory');
@@ -98,11 +150,25 @@ function renderMenu(){
       <h3>${p.name}</h3>
       <small>${p.desc}</small>
       <div class="price">${money(p.price)}</div>
-      ${p.sold_out || Number(p.stock||0)<=0
-        ? `<button class="btn secondary full" disabled>Sold Out</button>`
-        : `<button class="btn primary full" onclick="addToCart('${escapeName(p.name)}')">Add to Cart</button>`
-      }
+      ${productButtons(p)}
     </div>`).join(''):'<p>No items found. Try another search.</p>'
+}
+
+
+function productButtons(p){
+  if(p.sold_out || Number(p.stock||0)<=0){
+    return `<button class="btn secondary full" disabled>Sold Out</button>`;
+  }
+  const bundles = bundleOptions(p);
+  if(!bundles.length){
+    return `<button class="btn primary full" onclick="addToCart('${escapeName(p.name)}')">Add to Cart</button>`;
+  }
+  return `
+    <div class="bundle-buttons">
+      <button class="btn primary full" onclick="addToCart('${escapeName(p.name)}')">Single ${money(p.price)}</button>
+      ${bundles.map(b=>`<button class="btn secondary full" onclick="addBundle('${escapeName(p.name)}','${b.type}')">${b.label} — ${money(b.price)}</button>`).join('')}
+    </div>
+  `;
 }
 
 function escapeName(s){return String(s).replace(/'/g,"\\'")}
@@ -122,11 +188,31 @@ function addToCart(name){
   toggleCart(true)
 }
 
+function addBundle(name, bundleType){
+  let p=menu.find(x=>x.name===name);
+  if(!p)return;
+  const option=bundleOptions(p).find(b=>b.type===bundleType);
+  if(!option)return;
+  if(p.sold_out || Number(p.stock||0)<option.count){
+    alert(`Not enough ${p.name} available for ${option.label}.`);
+    return;
+  }
+  const cartName=`${p.name} (${option.label})`;
+  let item=cart.find(x=>x.name===cartName && x.bundleType===bundleType);
+  if(item){ item.qty++; }
+  else{
+    cart.push({...p,name:cartName,baseName:p.name,bundle:true,bundleType,bundleLabel:option.label,bundleCount:option.count,price:option.price,qty:1});
+  }
+  saveCart();
+  toggleCart(true);
+}
+
 function changeQty(name,d){
   let item=cart.find(x=>x.name===name);
   if(!item)return;
-  const inv=menu.find(x=>x.name===name);
-  if(d>0 && inv && item.qty+1 > Number(inv.stock||999)){alert(`Only ${inv.stock} available for ${name}.`);return;}
+  const inv=menu.find(x=>x.name===(item.baseName || name));
+  if(d>0 && inv && item.bundleCount && (item.qty+1)*item.bundleCount > Number(inv.stock||999)){alert(`Only ${inv.stock} available for ${item.baseName || name}.`);return;}
+  if(d>0 && inv && !item.bundleCount && item.qty+1 > Number(inv.stock||999)){alert(`Only ${inv.stock} available for ${name}.`);return;}
   item.qty+=d;
   if(item.qty<=0)cart=cart.filter(x=>x.name!==name);
   saveCart()
@@ -278,6 +364,7 @@ async function submitOrder(e){
   if(!cart.length){alert('Please add at least one item to the cart.');return}
   const selectedType=document.getElementById('orderType')?.value;
   if(selectedType==='Mail Shipping' && hasNoShippingItem()){alert('Cheesecake items are not available for shipping. Please choose Pickup or Local Delivery, or remove cheesecake items from your cart.');return}
+  if(!validatePrepTime()) return;
   if(selectedType==='Local Delivery'){
     const ok=await calculateDeliveryFee(false);
     if(!ok){alert('Local delivery is only available within 20 miles. Please enter a valid local delivery address or choose Pickup.');return}
