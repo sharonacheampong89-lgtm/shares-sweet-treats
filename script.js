@@ -33,22 +33,36 @@ function defaultDescription(category, name){
 
 function bundleOptions(product){
   const c=String(product.cat||'').toLowerCase();
-  if(c.includes('cookie')) return [
+
+  function addCustom(base){
+    return [
+      ...base,
+      ...base.map(b => ({
+        ...b,
+        type:'custom_' + b.type,
+        label:'Custom ' + b.label,
+        price:Number(b.price) + 1,
+        custom:true
+      }))
+    ];
+  }
+
+  if(c.includes('cookie')) return addCustom([
     {type:'half_dozen', label:'Half Dozen', count:6, price:15},
     {type:'dozen', label:'Dozen', count:12, price:26}
-  ];
-  if(c.includes('cupcake')) return [
+  ]);
+  if(c.includes('cupcake')) return addCustom([
     {type:'half_dozen', label:'Half Dozen', count:6, price:18},
     {type:'dozen', label:'Dozen', count:12, price:34}
-  ];
-  if(c.includes('brownie')) return [
+  ]);
+  if(c.includes('brownie')) return addCustom([
     {type:'half_dozen', label:'Half Dozen', count:6, price:10},
     {type:'dozen', label:'Dozen', count:12, price:18}
-  ];
-  if(c.includes('cinnamon')) return [
+  ]);
+  if(c.includes('cinnamon')) return addCustom([
     {type:'half_dozen', label:'Half Dozen', count:6, price:16},
     {type:'dozen', label:'Dozen', count:12, price:30}
-  ];
+  ]);
   return [];
 }
 
@@ -69,6 +83,66 @@ function prepMessage(){
   const hours = requiredPrepHours();
   if(hours >= 24) return 'Because your cart includes bread or cinnamon rolls, please choose a pickup/delivery time at least 24 hours from now.';
   return 'Because each order is baked fresh, please choose a pickup/delivery time at least 8 hours from now.';
+}
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+function formatLocalDateInput(date){
+  return `${date.getFullYear()}-${pad2(date.getMonth()+1)}-${pad2(date.getDate())}`;
+}
+
+function formatLocalTimeInput(date){
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+}
+
+function roundUpToNext15(date){
+  const d = new Date(date);
+  d.setSeconds(0,0);
+  const minutes = d.getMinutes();
+  const add = (15 - (minutes % 15)) % 15;
+  d.setMinutes(minutes + add);
+  return d;
+}
+
+function earliestReadyDate(){
+  return roundUpToNext15(new Date(Date.now() + requiredPrepHours() * 60 * 60 * 1000));
+}
+
+function updatePrepNotice(){
+  let notice=document.getElementById('prepNotice');
+  const form=document.getElementById('orderForm');
+  if(!form) return;
+  if(!notice){
+    notice=document.createElement('p');
+    notice.id='prepNotice';
+    notice.className='note';
+    const grid=document.querySelector('.form-grid');
+    if(grid) grid.insertAdjacentElement('afterend', notice);
+  }
+  if(!cart.length){
+    notice.textContent='Fresh-baked orders require advance preparation time. Add items to your cart to see the earliest pickup or delivery time.';
+    return;
+  }
+  notice.textContent=prepMessage();
+}
+
+function autoSetEarliestReadyTime(){
+  const type=document.getElementById('orderType')?.value;
+  if(type === 'Mail Shipping') return;
+
+  const dateInput=document.querySelector('[name="date"]');
+  const timeInput=document.querySelector('[name="time"]');
+  if(!dateInput || !timeInput || !cart.length) return;
+
+  const earliest = earliestReadyDate();
+  dateInput.min = formatLocalDateInput(earliest);
+
+  const currentValue = dateInput.value && timeInput.value ? new Date(`${dateInput.value}T${timeInput.value}`) : null;
+  if(!currentValue || currentValue < earliest){
+    dateInput.value = formatLocalDateInput(earliest);
+    timeInput.value = formatLocalTimeInput(earliest);
+  }
+  updatePrepNotice();
 }
 
 function validatePrepTime(){
@@ -114,6 +188,12 @@ async function init(){
   renderAdmin();
   setMinDate();
   updateDeliveryFields();
+  updatePrepNotice();
+  autoSetEarliestReadyTime();
+  ['date','time'].forEach(name=>{
+    const input=document.querySelector(`[name="${name}"]`);
+    if(input) input.addEventListener('change',()=>updatePrepNotice());
+  });
   ['street','apt','city','state','zip'].forEach(name=>{
     const input=document.querySelector(`[name="${name}"]`);
     if(input) input.addEventListener('input',()=>{ syncFullAddress(); if(document.getElementById('orderType')?.value==='Local Delivery'){ calculatedDelivery={fee:0,miles:null,available:false,address:''}; renderCart(); } });
@@ -166,7 +246,7 @@ function productButtons(p){
   return `
     <div class="bundle-buttons">
       <button class="btn primary full" onclick="addToCart('${escapeName(p.name)}')">Single ${money(p.price)}</button>
-      ${bundles.map(b=>`<button class="btn secondary full" onclick="addBundle('${escapeName(p.name)}','${b.type}')">${b.label} â€” ${money(b.price)}</button>`).join('')}
+      ${bundles.map(b=>`<button class="btn secondary full" onclick="addBundle('${escapeName(p.name)}','${b.type}')">${b.label} - ${money(b.price)}</button>`).join('')}
     </div>
   `;
 }
@@ -197,11 +277,34 @@ function addBundle(name, bundleType){
     alert(`Not enough ${p.name} available for ${option.label}.`);
     return;
   }
+
+  let customNotes='';
+  if(option.custom){
+    customNotes = prompt(`Custom ${option.label} for ${p.name}\n\nPlease type the flavors/counts you want.\nExample: 3 chocolate chip, 3 red velvet`) || '';
+    customNotes = customNotes.trim();
+    if(!customNotes){
+      alert('Please enter the flavors/counts for the custom bundle.');
+      return;
+    }
+  }
+
   const cartName=`${p.name} (${option.label})`;
-  let item=cart.find(x=>x.name===cartName && x.bundleType===bundleType);
+  let item=cart.find(x=>x.name===cartName && x.bundleType===bundleType && (x.customNotes||'')===customNotes);
   if(item){ item.qty++; }
   else{
-    cart.push({...p,name:cartName,baseName:p.name,bundle:true,bundleType,bundleLabel:option.label,bundleCount:option.count,price:option.price,qty:1});
+    cart.push({
+      ...p,
+      name:cartName,
+      baseName:p.name,
+      bundle:true,
+      bundleType,
+      bundleLabel:option.label,
+      bundleCount:option.count,
+      customBundle:!!option.custom,
+      customNotes,
+      price:option.price,
+      qty:1
+    });
   }
   saveCart();
   toggleCart(true);
@@ -218,7 +321,7 @@ function changeQty(name,d){
   saveCart()
 }
 
-function saveCart(){localStorage.setItem('sst_cart_final',JSON.stringify(cart));renderCart()}
+function saveCart(){localStorage.setItem('sst_cart_final',JSON.stringify(cart));renderCart();autoSetEarliestReadyTime();}
 
 function subtotal(){return cart.reduce((s,x)=>s+x.price*x.qty,0)}
 
@@ -252,7 +355,17 @@ function renderCart(){
   const cartCount=document.getElementById('cartCount');
   if(cartCount) cartCount.textContent=count;
   const cartItems=document.getElementById('cartItems');
-  if(cartItems) cartItems.innerHTML=cart.length?cart.map(x=>`<div class="cart-item"><b>${x.name}</b><br><small>${money(x.price)} each</small><div class="qty"><button onclick="changeQty('${escapeName(x.name)}',-1)">-</button><span>${x.qty}</span><button onclick="changeQty('${escapeName(x.name)}',1)">+</button><strong>${money(x.price*x.qty)}</strong></div></div>`).join(''):'<p>Your cart is empty. Add treats from the menu.</p>';
+  if(cartItems) cartItems.innerHTML=cart.length?cart.map(x=>`
+    <div class="cart-item">
+      <b>${x.name}</b><br>
+      <small>${money(x.price)} each${x.customNotes ? '<br>Flavors: '+x.customNotes : ''}</small>
+      <div class="qty">
+        <button onclick="changeQty('${escapeName(x.name)}',-1)">-</button>
+        <span>${x.qty}</span>
+        <button onclick="changeQty('${escapeName(x.name)}',1)">+</button>
+        <strong>${money(x.price*x.qty)}</strong>
+      </div>
+    </div>`).join(''):'<p>Your cart is empty. Add treats from the menu.</p>';
   const sub=document.getElementById('cartSubtotal'); if(sub) sub.textContent=money(subtotal());
   const del=document.getElementById('cartDelivery'); if(del) del.textContent=(document.getElementById('orderType')?.value==='Mail Shipping') ? 'Calculated after review' : money(deliveryFee());
   const rows=document.querySelectorAll('.cart-total span');
@@ -260,6 +373,7 @@ function renderCart(){
   const totalEl=document.getElementById('cartTotal'); if(totalEl) totalEl.textContent=money(total());
   const co=document.getElementById('checkoutTotal');if(co)co.textContent=money(total());
   const tipText=document.getElementById('tipPreview'); if(tipText) tipText.textContent=money(tipAmount());
+  updatePrepNotice();
 }
 
 function toggleCart(force){
@@ -328,6 +442,7 @@ function updateDeliveryFields(){
     if(addressHidden) addressHidden.value='';
   }
   renderCart();
+  autoSetEarliestReadyTime();
 }
 
 async function calculateDeliveryFee(showAlert=true){
