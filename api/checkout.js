@@ -1,6 +1,7 @@
 const Stripe = require('stripe');
 const { createClient } = require('@supabase/supabase-js');
 const { calculateDelivery } = require('./delivery-distance');
+const { getShippoRates } = require('./shipping-rates');
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -21,48 +22,16 @@ function hasNoShippingItem(items) {
   return items.some((item) => String(item.name || '').toLowerCase().includes('cheesecake'));
 }
 
-function baseBundleType(bundleType) {
-  return String(bundleType || '').replace(/^custom_/, '');
-}
-
 function bundlePriceCents(category, bundleType) {
   const c = String(category || '').toLowerCase();
-  const type = baseBundleType(bundleType);
-  const customExtra = String(bundleType || '').startsWith('custom_') ? 100 : 0;
-
-  if (c.includes('cookie')) {
-    if (type === 'half_dozen') return 1500 + customExtra;
-    if (type === 'dozen') return 2600 + customExtra;
-  }
-  if (c.includes('cupcake')) {
-    if (type === 'half_dozen') return 1800 + customExtra;
-    if (type === 'dozen') return 3400 + customExtra;
-  }
-  if (c.includes('brownie')) {
-    if (type === 'half_dozen') return 1000 + customExtra;
-    if (type === 'dozen') return 1800 + customExtra;
-  }
-  if (c.includes('cinnamon')) {
-    if (type === 'half_dozen') return 1600 + customExtra;
-    if (type === 'dozen') return 3000 + customExtra;
-  }
+  if (c.includes('cookie')) { if (bundleType === 'half_dozen') return 1500; if (bundleType === 'dozen') return 2600; }
+  if (c.includes('cupcake')) { if (bundleType === 'half_dozen') return 1800; if (bundleType === 'dozen') return 3400; }
+  if (c.includes('brownie')) { if (bundleType === 'half_dozen') return 1000; if (bundleType === 'dozen') return 1800; }
+  if (c.includes('cinnamon')) { if (bundleType === 'half_dozen') return 1600; if (bundleType === 'dozen') return 3000; }
   return null;
 }
-
-function bundleCount(bundleType) {
-  const type = baseBundleType(bundleType);
-  if (type === 'half_dozen') return 6;
-  if (type === 'dozen') return 12;
-  return 1;
-}
-
-function displayBundleType(bundleType) {
-  const type = baseBundleType(bundleType);
-  const custom = String(bundleType || '').startsWith('custom_') ? 'Custom ' : '';
-  if (type === 'half_dozen') return `${custom}Half Dozen`;
-  if (type === 'dozen') return `${custom}Dozen`;
-  return '';
-}
+function bundleCount(bundleType) { if (bundleType === 'half_dozen') return 6; if (bundleType === 'dozen') return 12; return 1; }
+function displayBundleType(bundleType) { if (bundleType === 'half_dozen') return 'Half Dozen'; if (bundleType === 'dozen') return 'Dozen'; return ''; }
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -112,7 +81,7 @@ module.exports = async function handler(req, res) {
         const bundleCents = bundlePriceCents(inv.category || item.cat || item.category, item.bundleType);
         if (!bundleCents) throw new Error(`Invalid bundle option for ${baseName}.`);
         unitAmount = bundleCents;
-        productName = `${baseName} (${displayBundleType(item.bundleType)})${item.customNotes ? ' - ' + String(item.customNotes).slice(0,120) : ''}`;
+        productName = `${baseName} (${displayBundleType(item.bundleType)})`;
         stockNeeded = quantity * bundleCount(item.bundleType);
       }
 
@@ -141,8 +110,41 @@ module.exports = async function handler(req, res) {
       deliveryMiles = delivery.miles.toFixed(1);
       serviceName = `Local Delivery Fee (${deliveryMiles} miles)`;
     } else if (customer.orderType === 'Mail Shipping') {
-      serviceFee = 0;
-      serviceName = 'Shipping quoted separately';
+      const selected = order.selectedShippingRate || {};
+      const addressParts = {
+        street: customer.street || '',
+        apt: customer.apt || '',
+        city: customer.city || '',
+        state: customer.state || '',
+        zip: customer.zip || '',
+        full: customer.address || ''
+      };
+
+      // Fallback: if separate fields were not included, keep using the full address for display,
+      // but live Shippo rates need street/city/state/zip from the checkout form.
+      if(!addressParts.street && customer.address){
+        addressParts.street = customer.address;
+      }
+
+      const shipping = await getShippoRates({
+        address: addressParts,
+        customer,
+        items
+      });
+
+      const rates = shipping.rates || [];
+      if(!rates.length) {
+        return res.status(400).json({ error: 'No shipping rates were found for this address.' });
+      }
+
+      let chosen = rates.find(rate =>
+        selected.serviceToken && rate.serviceToken === selected.serviceToken && rate.provider === selected.provider
+      ) || rates.find(rate =>
+        selected.service && rate.service === selected.service && rate.provider === selected.provider
+      ) || rates[0];
+
+      serviceFee = Number(chosen.amountCents || 0);
+      serviceName = `Shipping - ${chosen.provider} ${chosen.service}`;
     }
 
     if (serviceFee > 0) {
@@ -190,7 +192,7 @@ module.exports = async function handler(req, res) {
         service_fee: String(serviceFee),
         delivery_miles: String(deliveryMiles),
         tip: String(tip),
-        shipping_note: customer.orderType === 'Mail Shipping' ? 'Shipping will be quoted separately after order review and packing.' : ''
+        shipping_note: customer.orderType === 'Mail Shipping' ? 'Shipping charged at checkout using live Shippo rates.' : ''
       }
     });
 
