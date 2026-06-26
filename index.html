@@ -9,69 +9,63 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:wght@500;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="v11-homepage.css" />
 </head>
 <body>
+  <div class="launch-bar">🎉 Grand Opening! Fresh homemade desserts baked to order • Local delivery • Shipping on select treats</div>
+
   <header class="topbar">
     <a class="brand" href="#home"><span>Share's</span><small>Sweet Treats</small></a>
     <button class="mobile-menu" onclick="toggleMenu()">☰</button>
     <nav id="navLinks">
-      <a href="#menu">Menu</a><a href="#how">How it Works</a><a href="#delivery">Delivery</a><a href="#reviews">Reviews</a><a href="#custom">Custom Orders</a>
+      <a href="#menu">Menu</a><a href="#how">How it Works</a><a href="#delivery">Delivery</a><a href="#faq">FAQ</a><a href="#custom">Custom Orders</a>
     </nav>
     <button class="cart-btn" onclick="toggleCart(true)">🛒 Cart <b id="cartCount">0</b></button>
   </header>
 
   <main id="home">
-    <section class="hero hero-premium">
+    <section class="hero">
       <div class="hero-text">
-        <p class="eyebrow">Small-batch bakery • North Charleston</p>
+        <p class="eyebrow">Homemade • Fresh • Made with Love</p>
         <h1>Freshly baked happiness for every sweet moment.</h1>
-        <p>Homemade cookies, cupcakes, brownies, cinnamon rolls, mini cakes, breads, and custom desserts made fresh with love.</p>
-        <div class="hero-actions">
-          <a class="btn primary" href="#menu">Start an Order</a>
-          <a class="btn secondary" href="#custom">Request Custom Order</a>
-        </div>
-        <div class="quick-info premium-pills"><span>🚗 Local delivery</span><span>📦 Eligible shipping</span><span>💳 Secure checkout</span></div>
+        <p>Cookies, cupcakes, brownies, cinnamon rolls, personal mini cakes, breads, pull-apart breads and custom desserts made fresh for pickup, local delivery, or shipping on eligible treats.</p>
+        <div class="hero-actions"><a class="btn primary" href="#menu">Start an Order</a><a class="btn secondary" href="#custom">Request Custom Order</a></div>
+        <div class="quick-info"><span>🚗 Local delivery</span><span>📦 Shipping on select treats</span><span>💳 Secure checkout</span></div>
       </div>
-      <div class="hero-card premium-hero-card">
+      <div class="hero-card">
         <img src="brand-kit.png" alt="Share's Sweet Treats branding" />
         <div class="promo-card"><h2>Grand Opening Special</h2><p>Spend $30+ and receive a free Treat Box while supplies last.</p></div>
       </div>
     </section>
 
-    <section class="trust-grid premium-trust">
-      <div><b>❤️ Freshly Made</b><span>Every order is made with care.</span></div>
-      <div><b>🛒 Easy Ordering</b><span>Cart, checkout, pickup, delivery, and shipping.</span></div>
-      <div><b>📧 Order Updates</b><span>Customers receive branded email updates.</span></div>
-      <div><b>🍰 Custom Treats</b><span>Birthdays, events, colors, themes, and more.</span></div>
+    <section class="trust-grid">
+      <div><b>Freshly Made</b><span>Made to order with love.</span></div>
+      <div><b>Easy Checkout</b><span>Cart, delivery, shipping and pickup.</span></div>
+      <div><b>Order Updates</b><span>Email confirmations and status updates.</span></div>
+      <div><b>Small Batch Quality</b><span>Homemade treats prepared with care.</span></div>
+    </section>
+
+    <section class="section launch-feature">
+      <div>
+        <p class="eyebrow">Our promise</p>
+        <h2>Freshly baked for every order.</h2>
+        <p>Every cookie, cupcake, brownie, cake and bread is prepared in small batches using quality ingredients and plenty of love. Your order is made especially for you — never mass produced.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Before You Order</h3>
+        <p>🍰 Cheesecake items are pickup or local delivery only.</p>
+        <p>📦 Shipping is available only on eligible baked goods.</p>
+        <p>🎂 Custom orders may require at least 48 hours' notice.</p>
+      </div>
     </section>
 
     <section class="section featured-favorites">
       <p class="eyebrow">Customer favorites</p>
-      <h2>Featured Sweet Treats</h2>
+      <h2>Featured Favorites</h2>
       <div class="favorite-grid">
-        <a href="#menu" class="favorite-card"><span>🍪</span><h3>Classic Chocolate Chip</h3><p>Soft, thick, and full of chocolate chips.</p></a>
-        <a href="#menu" class="favorite-card"><span>🧁</span><h3>Strawberry Crunch Cupcake</h3><p>A pink favorite with sweet bakery crunch.</p></a>
-        <a href="#menu" class="favorite-card"><span>🍫</span><h3>Brookie</h3><p>Brownie + cookie in one rich dessert.</p></a>
-        <a href="#menu" class="favorite-card"><span>🍞</span><h3>Banana Bread</h3><p>Fresh baked loaf with chocolate chips.</p></a>
-      </div>
-    </section>
-
-    <section class="section story-section">
-      <div>
-        <p class="eyebrow">Meet the bakery</p>
-        <h2>Made with love by Share's Sweet Treats</h2>
-        <p>Share's Sweet Treats was created to bring warm, homemade desserts to birthdays, family gatherings, celebrations, and everyday cravings. Every order is baked fresh in small batches with care, creativity, and plenty of sweetness.</p>
-      </div>
-      <div class="story-card">
-        <h3>Before You Order</h3>
-        <ul>
-          <li>🍪 Freshly baked to order</li>
-          <li>🚗 Local delivery available in the North Charleston area</li>
-          <li>📦 Shipping available on eligible baked goods</li>
-          <li>🍰 Cheesecake items are pickup or local delivery only</li>
-          <li>⏰ Please allow time for custom and larger orders</li>
-        </ul>
+        <div><span>🍪</span><h3>Classic Chocolate Chip</h3><p>Soft, thick, and full of chocolate chips.</p></div>
+        <div><span>🧁</span><h3>Banana Pudding Cupcake</h3><p>A sweet Southern-inspired favorite.</p></div>
+        <div><span>🍫</span><h3>Brookie</h3><p>Brownie and cookie combined into one treat.</p></div>
+        <div><span>🎂</span><h3>Chocolate Luxe Mini Cake</h3><p>A rich personal cake for special moments.</p></div>
       </div>
     </section>
 
@@ -94,9 +88,9 @@
       <h2>How It Works</h2>
       <div class="step-grid">
         <div><span>1</span><h3>Choose Treats</h3><p>Add your favorite items to the cart and choose quantities.</p></div>
-        <div><span>2</span><h3>Select Pickup, Delivery, or Shipping</h3><p>Choose the option that works best for your order.</p></div>
-        <div><span>3</span><h3>Pay Securely</h3><p>Pay through Stripe with card, Apple Pay, Cash App Pay, and other supported methods.</p></div>
-        <div><span>4</span><h3>Receive Updates</h3><p>Receive branded confirmation and order status updates by email.</p></div>
+        <div><span>2</span><h3>Select Pickup, Delivery, or Shipping</h3><p>Pickup and local delivery are available. Shipping is available for eligible treats only.</p></div>
+        <div><span>3</span><h3>Pay Securely</h3><p>Checkout safely with card and supported digital payment methods through Stripe.</p></div>
+        <div><span>4</span><h3>Receive Updates</h3><p>Customers receive confirmation and status update emails.</p></div>
       </div>
     </section>
 
@@ -105,30 +99,64 @@
         <p class="eyebrow">Pickup • Local Delivery • Mail Shipping</p>
         <h2>Delivery & Shipping Options</h2>
         <p><b>Pickup:</b> Pickup details are provided after your order is confirmed.</p>
-        <p><b>Local delivery:</b> Available in the North Charleston area. Enter your address during checkout to calculate availability and delivery fee.</p>
-        <p><b>Mail shipping:</b> Available for eligible baked goods only. Shipping is quoted separately after your order is reviewed and packed.</p>
+        <p><b>Local delivery:</b> Available within the North Charleston area. Enter your address during checkout to calculate delivery availability and fee.</p>
+        <p><b>Mail shipping:</b> Available for cookies, brownies, breads and other treats that ship well. Shipping is quoted separately after review and packing.</p>
       </div>
-      <div class="fee-card shipping-notice-card">
+      <div class="fee-card">
         <h3>Important Shipping Notice</h3>
         <p><b>Cheesecake items cannot be shipped.</b></p>
-        <p>Cheesecake treats are available for pickup or local delivery only so they stay fresh and safe to enjoy.</p>
+        <p>Cheesecake items are available for pickup or local delivery only to keep them fresh and safe.</p>
+        <small>Shipping updates and tracking information will be sent by email when available.</small>
+      </div>
+    </section>
+
+    <section class="section about-baker">
+      <div class="about-card">
+        <p class="eyebrow">Meet the baker</p>
+        <h2>Welcome to Share's Sweet Treats</h2>
+        <p>Share's Sweet Treats was created from a love of homemade desserts and meaningful celebrations. Every order is prepared with care, whether you're celebrating a birthday, wedding, shower, graduation, holiday, or simply treating yourself.</p>
+        <p>Thank you for supporting a small business built on sweetness, creativity, and love.</p>
       </div>
     </section>
 
     <section id="custom" class="section custom-box">
       <p class="eyebrow">Custom orders welcome</p>
       <h2>Need something special?</h2>
-      <p>Birthdays, weddings, showers, events, colors, flavors, themes, toppings and packaging can be customized. Please allow extra time for custom orders.</p>
+      <p>Birthdays, weddings, showers, events, colors, flavors, themes, toppings and packaging can be customized. Please allow at least 48 hours for custom orders.</p>
       <a class="btn primary" href="#checkout">Start Custom Request</a>
     </section>
 
-    <section id="reviews" class="section reviews-premium">
+    <section id="reviews" class="section reviews-section">
       <p class="eyebrow">Sweet words</p>
       <h2>Customer Love</h2>
       <div class="review-grid">
-        <div><b>★★★★★</b><p>“The cookies were soft, fresh, and absolutely delicious.”</p></div>
-        <div><b>★★★★★</b><p>“The cupcakes were perfect for our celebration.”</p></div>
-        <div><b>★★★★★</b><p>“Beautiful treats, easy ordering, and great communication.”</p></div>
+        <div><b>★★★★★</b><p>"Absolutely delicious! The cookies were soft, fresh, and beautifully packaged."</p></div>
+        <div><b>★★★★★</b><p>"The cupcakes were the highlight of our celebration."</p></div>
+        <div><b>★★★★★</b><p>"Fast communication and amazing desserts. I would order again!"</p></div>
+      </div>
+    </section>
+
+    <section id="faq" class="section faq-section">
+      <p class="eyebrow">Helpful information</p>
+      <h2>Frequently Asked Questions</h2>
+      <div class="faq-grid">
+        <div><h3>Do you deliver?</h3><p>Yes. Local delivery is available in the North Charleston area. Enter your address during checkout to check availability.</p></div>
+        <div><h3>Can cheesecake be shipped?</h3><p>No. Cheesecake items are available for pickup or local delivery only.</p></div>
+        <div><h3>How much notice do custom orders need?</h3><p>Most custom orders require at least 48 hours' notice. Larger orders may need more time.</p></div>
+        <div><h3>How will I know my order is ready?</h3><p>You will receive email updates when your order is received, preparing, ready, shipped, or delivered.</p></div>
+        <div><h3>Do you ship nationwide?</h3><p>Shipping is available for eligible baked goods. Shipping is quoted separately after your order is reviewed and packed.</p></div>
+        <div><h3>Do you handle allergies?</h3><p>Please include allergy information in the notes. Some products may contain or come into contact with common allergens.</p></div>
+      </div>
+    </section>
+
+    <section id="hours" class="section hours-section">
+      <p class="eyebrow">Hours & contact</p>
+      <h2>Open for Orders</h2>
+      <div class="hours-card">
+        <p><b>Online ordering:</b> 24/7</p>
+        <p><b>Pickup:</b> By confirmed appointment</p>
+        <p><b>Local delivery:</b> Based on availability</p>
+        <p><b>Business email:</b> <a href="mailto:orders@sharessweettreats.com">orders@sharessweettreats.com</a></p>
       </div>
     </section>
 
@@ -147,17 +175,18 @@
           <label>Email<input required type="email" name="email" placeholder="customer@email.com"></label>
           <label>Phone<input required name="phone" placeholder="Phone number"></label>
           <label>Order Type<select name="orderType" id="orderType" onchange="updateDeliveryFields()"><option>Pickup</option><option>Local Delivery</option><option>Mail Shipping</option></select></label>
-          <label class="schedule-field">Preferred Date<input type="date" name="date" required></label>
-          <label class="schedule-field">Preferred Time<input type="time" name="time" required></label>
+          <label data-schedule-field="true">Preferred Date<input type="date" name="date" required></label>
+          <label data-schedule-field="true">Preferred Time<input type="time" name="time" required></label>
         </div>
         <div id="deliveryFields" class="delivery-fields hidden">
           <label>Delivery / Shipping Address<input name="address" placeholder="Street, apartment, city, state, ZIP"></label>
+          <label data-distance-field="true">Distance Range<select id="miles" name="miles" onchange="renderCart()"><option value="0">Shipping / Not Sure</option><option value="5">0–5 miles</option><option value="10">6–10 miles</option><option value="15">11–15 miles</option><option value="20">16–20 miles</option></select></label>
         </div>
         <label>Special Instructions<textarea name="notes" placeholder="Allergies, colors, packaging, pickup or delivery instructions..."></textarea></label>
         <div class="payment-options">
           <h3>Payment Method</h3>
-          <label><input type="radio" name="payment" value="Card / Apple Pay / Google Pay" checked> Secure Stripe Checkout</label>
-          <p class="note">Your payment is processed securely. We never collect card or bank numbers directly on this website.</p>
+          <label><input type="radio" name="payment" value="Card / Apple Pay / Google Pay" checked> Card / Apple Pay / Google Pay</label>
+          <p class="note">Payments are processed securely through Stripe. Please do not enter card information directly into notes.</p>
         </div>
         <div class="checkout-summary"><span>Estimated checkout total:</span><b id="checkoutTotal">$0.00</b></div>
         <button class="btn primary" type="submit">Proceed to Secure Payment</button>
@@ -171,14 +200,22 @@
     <div class="cart-header"><h2>Your Order</h2><button onclick="toggleCart(false)">×</button></div>
     <div id="cartItems"></div>
     <div class="cart-total"><span>Subtotal</span><b id="cartSubtotal">$0.00</b></div>
-    <div class="cart-total"><span>Service Fee</span><b id="cartDelivery">$0.00</b></div>
+    <div class="cart-total"><span>Delivery Fee</span><b id="cartDelivery">$0.00</b></div>
     <div class="cart-total grand"><span>Estimated Total</span><b id="cartTotal">$0.00</b></div>
     <a class="btn primary full" href="#checkout" onclick="toggleCart(false)">Checkout</a>
   </aside>
   <div class="overlay" id="overlay" onclick="toggleCart(false)"></div>
 
-  <footer>
-    <b>Share's Sweet Treats</b><br>Made with love, baked fresh • Contact: orders@sharessweettreats.com • Thank you for supporting my small business 💗
+  <footer class="site-footer">
+    <b>Share's Sweet Treats</b><br>
+    Made with love, baked fresh • Thank you for supporting my small business 💗
+    <div class="footer-links">
+      <a href="mailto:orders@sharessweettreats.com">Contact</a>
+      <a href="#faq">FAQ</a>
+      <a href="#delivery">Delivery & Shipping</a>
+      <a href="#menu">Order Online</a>
+    </div>
+    <small>© 2026 Share's Sweet Treats. All rights reserved.</small>
   </footer>
   <script src="script.js"></script>
 </body>
