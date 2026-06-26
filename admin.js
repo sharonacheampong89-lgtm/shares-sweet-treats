@@ -1,5 +1,6 @@
 let adminPassword = localStorage.getItem('sst_admin_password') || '';
 let orders = [];
+let inventory = [];
 
 const money = n => '$' + Number(n || 0).toFixed(2);
 const clean = v => String(v ?? '');
@@ -27,6 +28,29 @@ function clearDashboardFilters(){
   if(filter) filter.value = 'all';
 }
 
+function ensureInventorySection(){
+  if(document.getElementById('inventorySection')) return;
+  const dashboard = document.getElementById('dashboard');
+  if(!dashboard) return;
+
+  const section = document.createElement('section');
+  section.id = 'inventorySection';
+  section.className = 'inventory-section';
+  section.innerHTML = `
+    <h2>Inventory Manager</h2>
+    <p class="meta">Update stock, sold-out status, prices, and item visibility.</p>
+    <div class="inventory-tools">
+      <input id="inventorySearch" placeholder="Search inventory..." oninput="renderInventory()">
+      <select id="inventoryCategory" onchange="renderInventory()">
+        <option value="all">All categories</option>
+      </select>
+      <button class="small" onclick="loadInventory()">Refresh Inventory</button>
+    </div>
+    <div id="inventoryList"><p>Loading inventory...</p></div>
+  `;
+  dashboard.appendChild(section);
+}
+
 async function loginAdmin(){
   const input = document.getElementById('adminPassword');
   const error = document.getElementById('loginError');
@@ -37,7 +61,9 @@ async function loginAdmin(){
   document.getElementById('loginCard').classList.add('hidden');
   document.getElementById('dashboard').classList.remove('hidden');
   clearDashboardFilters();
+  ensureInventorySection();
   await loadOrders();
+  await loadInventory();
 }
 
 function logoutAdmin(){
@@ -58,6 +84,22 @@ async function loadOrders(){
     renderOrders();
   }catch(err){
     list.innerHTML = `<p class="error">${err.message}</p>`;
+  }
+}
+
+async function loadInventory(){
+  ensureInventorySection();
+  const list = document.getElementById('inventoryList');
+  if(list) list.innerHTML = '<p>Loading inventory...</p>';
+  try{
+    const res = await fetch('/api/inventory', { headers: { 'x-admin-password': adminPassword }});
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Could not load inventory.');
+    inventory = data.items || [];
+    renderInventoryCategories();
+    renderInventory();
+  }catch(err){
+    if(list) list.innerHTML = `<p class="error">${err.message}</p>`;
   }
 }
 
@@ -112,13 +154,63 @@ function formatStatus(status){
   return clean(status || 'paid').replaceAll('_',' ');
 }
 
+function orderNumber(o){
+  const id = clean(o.order_id || o.stripe_session_id || o.id || '');
+  return 'SST-' + id.replace(/[^a-zA-Z0-9]/g,'').slice(-6).toUpperCase();
+}
+
+function printSlip(id){
+  const o = orders.find(x => x.id === id);
+  if(!o){ alert('Order not found.'); return; }
+  const win = window.open('', '_blank');
+  const html = `<!doctype html>
+<html><head><title>${orderNumber(o)} Packing Slip</title>
+<style>
+body{font-family:Arial,sans-serif;padding:28px;color:#222}
+h1{color:#a12b64;margin-bottom:4px}
+.box{border:1px solid #ddd;border-radius:12px;padding:16px;margin:14px 0}
+li{margin:8px 0;font-size:16px}
+.check{display:inline-block;width:16px;height:16px;border:1px solid #333;margin-right:8px;vertical-align:middle}
+.meta{line-height:1.55}
+@media print{button{display:none}}
+</style></head>
+<body>
+<button onclick="window.print()">Print</button>
+<h1>Share's Sweet Treats</h1>
+<h2>Packing Slip ${orderNumber(o)}</h2>
+<div class="box meta">
+<strong>Customer:</strong> ${clean(o.customer_name || 'Customer')}<br>
+<strong>Email:</strong> ${clean(o.email)}<br>
+<strong>Phone:</strong> ${clean(o.phone)}<br>
+<strong>Order Type:</strong> ${clean(o.order_type)}<br>
+<strong>Status:</strong> ${formatStatus(o.order_status || 'paid')}<br>
+<strong>Date:</strong> ${new Date(o.created_at).toLocaleString()}<br>
+<strong>Address:</strong> ${clean(o.delivery_address || o.address || 'No address collected.')}
+</div>
+<div class="box">
+<h3>Items</h3>
+<ul>${(Array.isArray(o.items)?o.items:[]).map(i=>`<li><span class="check"></span>${clean(i.qty || i.quantity || 1)} × ${clean(i.name)}</li>`).join('') || '<li>No items listed</li>'}</ul>
+</div>
+<div class="box">
+<h3>Notes</h3>
+<p>${clean(o.notes || 'No notes.')}</p>
+</div>
+<div class="box">
+<h3>Baker Notes</h3>
+<p style="height:80px"></p>
+</div>
+</body></html>`;
+  win.document.write(html);
+  win.document.close();
+}
+
 function orderCard(o){
   return `<article class="order-card">
     <div class="order-top">
       <div>
         <span class="badge paid">${clean(o.payment_status || 'paid')}</span>
         <span class="badge">${formatStatus(o.order_status || 'paid')}</span>
-        <h3>${clean(o.customer_name || 'Customer')} — ${money(o.total)}</h3>
+        <h3>${orderNumber(o)} • ${clean(o.customer_name || 'Customer')} — ${money(o.total)}</h3>
         <div class="meta">
           ${clean(o.email)} • ${clean(o.phone)}<br>
           ${clean(o.order_type)} ${o.delivery_distance ? '• '+o.delivery_distance+' miles' : ''}<br>
@@ -130,6 +222,7 @@ function orderCard(o){
     <ul class="items">${itemList(o.items)}</ul>
     ${o.notes ? `<p><strong>Notes:</strong> ${clean(o.notes)}</p>` : ''}
     <div class="actions">
+      <button class="small" onclick="printSlip('${o.id}')">🖨 Print Slip</button>
       ${statusOptions.map(([value,label]) => `<button class="small" onclick="updateStatus('${o.id}','${value}')">${label}</button>`).join('')}
     </div>
     <small class="meta">Status buttons update Supabase and email the customer automatically.</small>
@@ -151,11 +244,7 @@ async function updateStatus(id, status){
     const data = await res.json();
     if(!res.ok) throw new Error(data.error || 'Could not update status.');
 
-    // Update local copy immediately so the dashboard does not disappear while refreshing.
     orders = orders.map(o => o.id === id ? (data.order || {...o, order_status: status}) : o);
-
-    // Clear filters after a status change. This prevents the dashboard from looking empty
-    // when text like "Admin" is still in the search box.
     clearDashboardFilters();
     renderOrders();
 
@@ -171,6 +260,105 @@ async function updateStatus(id, status){
   }
 }
 
+function renderInventoryCategories(){
+  const select = document.getElementById('inventoryCategory');
+  if(!select) return;
+  const current = select.value || 'all';
+  const cats = [...new Set(inventory.map(i => clean(i.category)).filter(Boolean))].sort();
+  select.innerHTML = '<option value="all">All categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+  select.value = cats.includes(current) ? current : 'all';
+}
+
+function renderInventory(){
+  const list = document.getElementById('inventoryList');
+  if(!list) return;
+
+  const q = (document.getElementById('inventorySearch')?.value || '').toLowerCase().trim();
+  const cat = document.getElementById('inventoryCategory')?.value || 'all';
+
+  let rows = inventory.filter(item => {
+    const matchSearch = (clean(item.name)+clean(item.category)).toLowerCase().includes(q);
+    const matchCat = cat === 'all' || clean(item.category) === cat;
+    return matchSearch && matchCat;
+  });
+
+  if(!rows.length){
+    list.innerHTML = '<p>No inventory items found.</p>';
+    return;
+  }
+
+  list.innerHTML = rows.map(item => `
+    <div class="order-card inventory-card">
+      <div class="order-top">
+        <div>
+          <span class="badge ${item.sold_out ? '' : 'paid'}">${item.sold_out ? 'Sold Out' : 'Available'}</span>
+          <span class="badge">${item.active ? 'Visible' : 'Hidden'}</span>
+          <h3>${clean(item.name)} — ${money(item.price)}</h3>
+          <div class="meta">${clean(item.category)} • Stock: ${clean(item.stock)}</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="small" onclick="editInventory('${item.id}')">Edit</button>
+        <button class="small" onclick="toggleSoldOut('${item.id}')">${item.sold_out ? 'Mark Available' : 'Mark Sold Out'}</button>
+        <button class="small" onclick="toggleActive('${item.id}')">${item.active ? 'Hide' : 'Show'}</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function saveInventoryUpdate(id, changes){
+  const res = await fetch('/api/inventory', {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json','x-admin-password':adminPassword},
+    body: JSON.stringify({id, ...changes})
+  });
+  const data = await res.json();
+  if(!res.ok) throw new Error(data.error || 'Inventory update failed.');
+  inventory = inventory.map(i => i.id === id ? data.item : i);
+  renderInventoryCategories();
+  renderInventory();
+}
+
+async function editInventory(id){
+  const item = inventory.find(i => i.id === id);
+  if(!item) return alert('Item not found.');
+
+  const price = prompt(`Price for ${item.name}:`, item.price);
+  if(price === null) return;
+  const stock = prompt(`Stock for ${item.name}:`, item.stock);
+  if(stock === null) return;
+
+  try{
+    await saveInventoryUpdate(id, {
+      price: Number(price),
+      stock: Number(stock)
+    });
+    alert('Inventory updated.');
+  }catch(err){
+    alert(err.message);
+  }
+}
+
+async function toggleSoldOut(id){
+  const item = inventory.find(i => i.id === id);
+  if(!item) return;
+  try{
+    await saveInventoryUpdate(id, { sold_out: !item.sold_out });
+  }catch(err){
+    alert(err.message);
+  }
+}
+
+async function toggleActive(id){
+  const item = inventory.find(i => i.id === id);
+  if(!item) return;
+  try{
+    await saveInventoryUpdate(id, { active: !item.active });
+  }catch(err){
+    alert(err.message);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const search = document.getElementById('searchBox');
   const filter = document.getElementById('statusFilter');
@@ -181,6 +369,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('loginCard').classList.add('hidden');
     document.getElementById('dashboard').classList.remove('hidden');
     clearDashboardFilters();
+    ensureInventorySection();
     loadOrders();
+    loadInventory();
   }
 });
