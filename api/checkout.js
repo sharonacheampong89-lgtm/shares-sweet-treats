@@ -21,16 +21,48 @@ function hasNoShippingItem(items) {
   return items.some((item) => String(item.name || '').toLowerCase().includes('cheesecake'));
 }
 
+function baseBundleType(bundleType) {
+  return String(bundleType || '').replace(/^custom_/, '');
+}
+
 function bundlePriceCents(category, bundleType) {
   const c = String(category || '').toLowerCase();
-  if (c.includes('cookie')) { if (bundleType === 'half_dozen') return 1500; if (bundleType === 'dozen') return 2600; }
-  if (c.includes('cupcake')) { if (bundleType === 'half_dozen') return 1800; if (bundleType === 'dozen') return 3400; }
-  if (c.includes('brownie')) { if (bundleType === 'half_dozen') return 1000; if (bundleType === 'dozen') return 1800; }
-  if (c.includes('cinnamon')) { if (bundleType === 'half_dozen') return 1600; if (bundleType === 'dozen') return 3000; }
+  const type = baseBundleType(bundleType);
+  const customExtra = String(bundleType || '').startsWith('custom_') ? 100 : 0;
+
+  if (c.includes('cookie')) {
+    if (type === 'half_dozen') return 1500 + customExtra;
+    if (type === 'dozen') return 2600 + customExtra;
+  }
+  if (c.includes('cupcake')) {
+    if (type === 'half_dozen') return 1800 + customExtra;
+    if (type === 'dozen') return 3400 + customExtra;
+  }
+  if (c.includes('brownie')) {
+    if (type === 'half_dozen') return 1000 + customExtra;
+    if (type === 'dozen') return 1800 + customExtra;
+  }
+  if (c.includes('cinnamon')) {
+    if (type === 'half_dozen') return 1600 + customExtra;
+    if (type === 'dozen') return 3000 + customExtra;
+  }
   return null;
 }
-function bundleCount(bundleType) { if (bundleType === 'half_dozen') return 6; if (bundleType === 'dozen') return 12; return 1; }
-function displayBundleType(bundleType) { if (bundleType === 'half_dozen') return 'Half Dozen'; if (bundleType === 'dozen') return 'Dozen'; return ''; }
+
+function bundleCount(bundleType) {
+  const type = baseBundleType(bundleType);
+  if (type === 'half_dozen') return 6;
+  if (type === 'dozen') return 12;
+  return 1;
+}
+
+function displayBundleType(bundleType) {
+  const type = baseBundleType(bundleType);
+  const custom = String(bundleType || '').startsWith('custom_') ? 'Custom ' : '';
+  if (type === 'half_dozen') return `${custom}Half Dozen`;
+  if (type === 'dozen') return `${custom}Dozen`;
+  return '';
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -80,7 +112,7 @@ module.exports = async function handler(req, res) {
         const bundleCents = bundlePriceCents(inv.category || item.cat || item.category, item.bundleType);
         if (!bundleCents) throw new Error(`Invalid bundle option for ${baseName}.`);
         unitAmount = bundleCents;
-        productName = `${baseName} (${displayBundleType(item.bundleType)})`;
+        productName = `${baseName} (${displayBundleType(item.bundleType)})${item.customNotes ? ' - ' + String(item.customNotes).slice(0,120) : ''}`;
         stockNeeded = quantity * bundleCount(item.bundleType);
       }
 
