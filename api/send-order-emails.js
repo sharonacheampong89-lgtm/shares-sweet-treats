@@ -1,14 +1,20 @@
 const Stripe = require('stripe');
 const { Resend } = require('resend');
+const { createClient } = require('@supabase/supabase-js');
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const resend = new Resend(process.env.RESEND_API_KEY);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
-const OWNER_EMAIL = process.env.OWNER_EMAIL || 'sharonacheampong89@gmail.com';
-const FROM_EMAIL = process.env.FROM_EMAIL || "Share's Sweet Treats <onboarding@resend.dev>";
+const OWNER_EMAIL = process.env.OWNER_EMAIL || 'orders@sharessweettreats.com';
+const FROM_EMAIL = process.env.FROM_EMAIL || "Share's Sweet Treats <orders@sharessweettreats.com>";
 
 function money(cents) {
   return `$${(Number(cents || 0) / 100).toFixed(2)}`;
+}
+
+function dollars(cents) {
+  return Number(((Number(cents || 0)) / 100).toFixed(2));
 }
 
 function clean(value) {
@@ -29,6 +35,15 @@ function buildItemsHtml(items) {
   }).join('');
 }
 
+function buildItemsJson(items) {
+  return items.data.map((item) => ({
+    name: item.description || item.price?.product?.name || 'Menu item',
+    quantity: item.quantity || 1,
+    amount_total: dollars(item.amount_total),
+    currency: item.currency || 'usd'
+  }));
+}
+
 function buildShippingText(session) {
   const address = session.shipping_details?.address;
   if (!address) return 'No shipping/delivery address collected.';
@@ -43,6 +58,53 @@ function buildShippingText(session) {
 
 function buildShippingHtml(session) {
   return buildShippingText(session).replace(/\n/g, '<br>');
+}
+
+async function saveOrderToSupabase(session, items) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+    console.warn('Supabase environment variables are missing. Skipping order save.');
+    return;
+  }
+
+  const customerEmail = session.customer_details?.email || session.customer_email || '';
+  const customerName = session.metadata?.customer_name || session.customer_details?.name || 'Customer';
+  const customerPhone = session.customer_details?.phone || session.metadata?.phone || '';
+  const orderType = session.metadata?.order_type || '';
+  const notes = session.metadata?.notes || '';
+  const deliveryAddress = buildShippingText(session);
+
+  const deliveryFee = Number(session.metadata?.delivery_fee || 0);
+  const shippingFee = Number(session.metadata?.shipping_fee || 0);
+  const tip = Number(session.metadata?.tip || 0);
+  const subtotal = Number(session.metadata?.subtotal || 0);
+  const deliveryDistance = Number(session.metadata?.delivery_distance || 0);
+  const total = dollars(session.amount_total);
+
+  const payload = {
+    customer_name: customerName,
+    email: customerEmail,
+    phone: customerPhone,
+    address: deliveryAddress,
+    delivery_address: deliveryAddress,
+    order_type: orderType,
+    delivery_fee: deliveryFee,
+    shipping_fee: shippingFee,
+    tip,
+    subtotal: subtotal || null,
+    total,
+    payment_status: session.payment_status || 'paid',
+    order_status: 'New',
+    items: buildItemsJson(items),
+    delivery_distance: deliveryDistance || null,
+    notes,
+    stripe_session_id: session.id
+  };
+
+  const { error } = await supabase.from('orders').insert([payload]);
+  if (error) {
+    console.error('Supabase order insert failed:', error);
+    throw new Error(`Supabase insert failed: ${error.message}`);
+  }
 }
 
 module.exports = async function handler(req, res) {
@@ -78,6 +140,8 @@ module.exports = async function handler(req, res) {
     const items = await stripe.checkout.sessions.listLineItems(sessionId, { limit: 100 });
     const itemText = buildItemsText(items);
     const itemHtml = buildItemsHtml(items);
+
+    await saveOrderToSupabase(session, items);
 
     const customerEmail = session.customer_details?.email || session.customer_email;
     const customerName = session.metadata?.customer_name || session.customer_details?.name || 'Customer';
