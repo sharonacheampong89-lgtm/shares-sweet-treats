@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Share's Sweet Treats Admin</title>
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <main class="admin-wrap">
+    <section class="login-card" id="loginCard">
+      <h1>Share's Sweet Treats</h1>
+      <p>Owner Dashboard</p>
+      <input id="adminPassword" type="password" placeholder="Admin password" />
+      <button onclick="loginAdmin()">Log In</button>
+      <p class="error" id="loginError"></p>
+    </section>
+
+    <section class="dashboard hidden" id="dashboard">
+      <header class="dash-header">
+        <div>
+          <h1>Owner Dashboard</h1>
+          <p>Manage Share's Sweet Treats orders</p>
+        </div>
+        <button onclick="logoutAdmin()" class="secondary">Log Out</button>
+      </header>
+
+      <div class="stats-grid">
+        <div class="stat"><span>Orders</span><strong id="statOrders">0</strong></div>
+        <div class="stat"><span>Total Sales</span><strong id="statSales">$0.00</strong></div>
+        <div class="stat"><span>New/Paid</span><strong id="statNew">0</strong></div>
+        <div class="stat"><span>Completed</span><strong id="statCompleted">0</strong></div>
+      </div>
+
+      <div class="toolbar">
+        <input id="searchBox" placeholder="Search customer, email, order type..." oninput="renderOrders()" />
+        <select id="statusFilter" onchange="renderOrders()">
+          <option value="all">All statuses</option>
+          <option value="paid">Paid/New</option>
+          <option value="preparing">Preparing</option>
+          <option value="ready">Ready</option>
+          <option value="out_for_delivery">Out for Delivery</option>
+          <option value="completed">Completed</option>
+        </select>
+        <button onclick="loadOrders()">Refresh</button>
+      </div>
+
+      <div id="ordersList" class="orders-list"></div>
+    </section>
+  </main>
+  <script src="admin.js"></script>
+</body>
+</html>
