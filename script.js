@@ -1,83 +1,228 @@
-const menu=[
-{cat:'Cookies',name:'Classic Chocolate Chip',price:3.25,desc:'Soft, thick and full of chocolate chips.',badge:'Best Seller'},{cat:'Cookies',name:'Biscoff Cookie Butter',price:3.25,desc:'Cookie butter flavor with sweet bakery crunch.',badge:'Popular'},{cat:'Cookies',name:'Nutella Lava',price:3.50,desc:'Chocolate cookie with Nutella-style filling.',badge:'Filled'},{cat:'Cookies',name:'S’mores',price:3.50,desc:'Graham, marshmallow and chocolate inspired.',badge:'Campfire'},{cat:'Cookies',name:'Strawberry Crunch',price:3.25,desc:'Sweet strawberry crunch cookie.',badge:'Pink Favorite'},{cat:'Cookies',name:'Red Velvet White Chocolate',price:3.25,desc:'Red velvet cookie with white chocolate.',badge:'Classic'},{cat:'Cookies',name:'Brown Butter Pecan',price:3.50,desc:'Rich brown butter pecan cookie.',badge:'Nutty'},{cat:'Cookies',name:'Cookie Monster',price:3.25,desc:'Fun blue cookie loaded with sweets.',badge:'Fun'},{cat:'Cookies',name:'Lemon Sugar',price:3.25,desc:'Bright lemon sugar cookie.',badge:'Fresh'},
-{cat:'Cupcakes',name:'Vanilla Bean',price:3.25,desc:'Classic vanilla cupcake.',badge:'Classic'},{cat:'Cupcakes',name:'Chocolate Fudge',price:3.25,desc:'Rich chocolate cupcake.',badge:'Chocolate'},{cat:'Cupcakes',name:'Strawberry Crunch',price:3.50,desc:'Pink strawberry crunch cupcake.',badge:'Popular'},{cat:'Cupcakes',name:'Biscoff Dream',price:3.50,desc:'Biscoff flavored cupcake.',badge:'Dreamy'},{cat:'Cupcakes',name:'Nutella Hazelnut',price:3.75,desc:'Chocolate hazelnut cupcake.',badge:'Premium'},{cat:'Cupcakes',name:'Banana Pudding',price:3.75,desc:'Banana pudding inspired cupcake.',badge:'Southern'},{cat:'Cupcakes',name:'Red Velvet',price:3.75,desc:'Red velvet cupcake.',badge:'Classic'},
-{cat:'Brownies & Bars',name:'Classic Fudge',price:3.25,desc:'Rich, fudgy brownie.',badge:'Fudgy'},{cat:'Brownies & Bars',name:'Nutella Swirl',price:3.25,desc:'Brownie with chocolate hazelnut swirl.',badge:'Swirl'},{cat:'Brownies & Bars',name:'Biscoff Brownies',price:3.25,desc:'Brownies with Biscoff flavor.',badge:'Popular'},{cat:'Brownies & Bars',name:'Brookie',price:3.25,desc:'Brownie and cookie combined into one sweet treat.',badge:'New'},{cat:'Brownies & Bars',name:'Oreo Cheesecake Brownies',price:3.25,desc:'Oreo cheesecake brownie bar.',badge:'Creamy'},{cat:'Brownies & Bars',name:'Turtle Brownies',price:3.25,desc:'Chocolate, caramel and pecan style brownie.',badge:'Caramel'},
-{cat:'Cinnamon Rolls',name:'Classic Glazed',price:3.25,desc:'Soft glazed cinnamon roll.',badge:'Classic'},{cat:'Cinnamon Rolls',name:'Biscoff Drizzle',price:3.75,desc:'Cinnamon roll with Biscoff drizzle.',badge:'Drizzle'},{cat:'Cinnamon Rolls',name:'Nutella Hazelnut',price:3.75,desc:'Sweet hazelnut chocolate roll.',badge:'Premium'},{cat:'Cinnamon Rolls',name:'Strawberry Cheesecake',price:4.00,desc:'Strawberry cheesecake cinnamon roll.',badge:'Sweet'},{cat:'Cinnamon Rolls',name:'Cookies & Cream',price:4.50,desc:'Cookies and cream topped roll.',badge:'Loaded'},{cat:'Cinnamon Rolls',name:'Sugar Cheesecake',price:4.50,desc:'Sweet cheesecake inspired roll.',badge:'Loaded'},
-{cat:'Mini Cakes',name:'Chocolate Luxe',price:8.99,desc:'Personal mini cake.',badge:'Personal'},{cat:'Mini Cakes',name:'Strawberry Shortcake',price:10.99,desc:'Personal strawberry mini cake.',badge:'Premium'},{cat:'Mini Cakes',name:'Biscoff Crunch',price:10.99,desc:'Personal Biscoff mini cake.',badge:'Premium'},{cat:'Mini Cakes',name:'Lemon Cake',price:8.99,desc:'Personal lemon mini cake.',badge:'Fresh'},{cat:'Mini Cakes',name:'Nutella Dream',price:8.99,desc:'Personal Nutella mini cake.',badge:'Dreamy'},{cat:'Mini Cakes',name:'Confetti Cake',price:8.99,desc:'Personal confetti mini cake.',badge:'Birthday'},
-{cat:'Breads',name:'White Bread',price:7.99,desc:'Fresh baked loaf.',badge:'Loaf'},{cat:'Breads',name:'Honey Butter Bread',price:9.99,desc:'Soft honey butter loaf.',badge:'Sweet'},{cat:'Breads',name:'Garlic Herb Bread',price:9.99,desc:'Savory garlic herb loaf.',badge:'Savory'},{cat:'Breads',name:'Chocolate Chip Banana Bread',price:11.99,desc:'Banana bread with chocolate chips.',badge:'Popular'},{cat:'Breads',name:'Cinnamon Swirl Bread',price:11.99,desc:'Sweet cinnamon swirl loaf.',badge:'Swirl'},{cat:'Pull-Apart Breads',name:'Cinnamon Sugar Pull-Apart',price:17.99,desc:'Sweet pull-apart bread.',badge:'Shareable'},{cat:'Pull-Apart Breads',name:'Garlic Parmesan Pull-Apart',price:19.99,desc:'Savory pull-apart bread.',badge:'Savory'},{cat:'Pull-Apart Breads',name:'Pizza Bread',price:19.99,desc:'Savory pizza-style pull-apart.',badge:'Party'},
-{cat:'Extras',name:'Chocolate Drizzle',price:.69,desc:'Add-on drizzle.',badge:'Add-on'},{cat:'Extras',name:'Nutella Drizzle',price:.69,desc:'Add-on drizzle.',badge:'Add-on'},{cat:'Extras',name:'Oreo Crumble',price:.69,desc:'Add-on topping.',badge:'Add-on'},{cat:'Extras',name:'M&M Topping',price:.69,desc:'Colorful M&M topping add-on.',badge:'Add-on'},{cat:'Extras',name:'Extra Filling',price:.69,desc:'Additional filling per item.',badge:'Add-on'}
-];
+let menu=[];
 let cart=JSON.parse(localStorage.getItem('sst_cart_final')||'[]');
 let orders=JSON.parse(localStorage.getItem('sst_orders_final')||'[]');
 let activeCat='All';
 let calculatedDelivery={fee:0,miles:null,available:false,address:''};
+
 const money=n=>'$'+Number(n||0).toFixed(2);
-const cats=['All',...new Set(menu.map(x=>x.cat))];
-function init(){setupTipOptions();document.getElementById('categoryTabs').innerHTML=cats.map(c=>`<button class="${c===activeCat?'active':''}" onclick="setCat('${c}')">${c}</button>`).join('');renderMenu();renderCart();renderAdmin();setMinDate();}
-function setMinDate(){const d=document.querySelector('input[type="date"]'); if(d&&!d.min)d.min=new Date().toISOString().slice(0,10)}
+
+function normalizeProductFromInventory(item){
+  return {
+    id:item.id,
+    cat:item.category || 'Treats',
+    name:item.name,
+    price:Number(item.price || 0),
+    desc:item.description || defaultDescription(item.category, item.name),
+    badge:item.sold_out ? 'Sold Out' : (Number(item.stock || 0) <= 5 ? 'Limited' : 'Fresh'),
+    stock:Number(item.stock ?? 999),
+    sold_out:!!item.sold_out,
+    active:item.active !== false
+  };
+}
+
+function defaultDescription(category, name){
+  const c=String(category||'').toLowerCase();
+  if(c.includes('cookie')) return 'Fresh baked cookie made with love.';
+  if(c.includes('cupcake')) return 'Soft cupcake with sweet bakery flavor.';
+  if(c.includes('brownie')) return 'Rich, sweet brownie-style treat.';
+  if(c.includes('cake')) return 'Personal sweet treat made fresh.';
+  if(c.includes('bread')) return 'Fresh baked bread made to order.';
+  if(c.includes('add')) return 'Optional add-on for your treats.';
+  return 'Fresh homemade bakery item.';
+}
+
+async function loadPublicInventory(){
+  try{
+    const res=await fetch('/api/public-inventory');
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error || 'Could not load menu.');
+    menu=(data.items||[]).map(normalizeProductFromInventory).filter(x=>x.active);
+  }catch(err){
+    console.warn('Inventory load failed:', err);
+    menu=[];
+    const menuGrid=document.getElementById('menuGrid');
+    if(menuGrid) menuGrid.innerHTML='<p>Menu is temporarily unavailable. Please refresh or contact us.</p>';
+  }
+}
+
+function cats(){
+  return ['All',...new Set(menu.map(x=>x.cat))];
+}
+
+async function init(){
+  await loadPublicInventory();
+  
+  document.querySelector('[name="date"]')?.closest('label')?.setAttribute('data-schedule-field','true');
+  document.querySelector('[name="time"]')?.closest('label')?.setAttribute('data-schedule-field','true');
+  document.getElementById('miles')?.closest('label')?.setAttribute('data-distance-field','true');
+  setupTipOptions();
+  renderCategoryButtons();
+  renderMenu();
+  renderCart();
+  renderAdmin();
+  setMinDate();
+  updateDeliveryFields();
+  ['street','apt','city','state','zip'].forEach(name=>{
+    const input=document.querySelector(`[name="${name}"]`);
+    if(input) input.addEventListener('input',()=>{ syncFullAddress(); if(document.getElementById('orderType')?.value==='Local Delivery'){ calculatedDelivery={fee:0,miles:null,available:false,address:''}; renderCart(); } });
+  });
+}
+
+function setMinDate(){
+  const d=document.querySelector('input[type="date"]');
+  if(d&&!d.min)d.min=new Date().toISOString().slice(0,10)
+}
+
 function toggleMenu(){document.getElementById('navLinks').classList.toggle('show')}
+
 function setCat(c){activeCat=c;renderCategoryButtons();renderMenu()}
-function renderCategoryButtons(){document.getElementById('categoryTabs').innerHTML=cats.map(c=>`<button class="${c===activeCat?'active':''}" onclick="setCat('${c}')">${c}</button>`).join('')}
-function renderMenu(){let q=(document.getElementById('searchBox')?.value||'').toLowerCase();let sort=document.getElementById('sortBox')?.value||'featured';let items=activeCat==='All'?menu:[...menu].filter(x=>x.cat===activeCat);items=items.filter(x=>(x.name+x.desc+x.cat).toLowerCase().includes(q));if(sort==='low')items.sort((a,b)=>a.price-b.price);if(sort==='high')items.sort((a,b)=>b.price-a.price);document.getElementById('menuGrid').innerHTML=items.length?items.map(p=>`<div class="product"><div class="add-row"><span>${p.badge}</span><span>${p.cat}</span></div><h3>${p.name}</h3><small>${p.desc}</small><div class="price">${money(p.price)}</div><button class="btn primary full" onclick="addToCart('${escapeName(p.name)}')">Add to Cart</button></div>`).join(''):'<p>No items found. Try another search.</p>'}
-function escapeName(s){return s.replace(/'/g,"\\'")}
-function addToCart(name){let p=menu.find(x=>x.name===name), item=cart.find(x=>x.name===name); if(item)item.qty++; else cart.push({...p,qty:1}); saveCart(); toggleCart(true)}
-function changeQty(name,d){let item=cart.find(x=>x.name===name); if(!item)return; item.qty+=d; if(item.qty<=0)cart=cart.filter(x=>x.name!==name); saveCart()}
+
+function renderCategoryButtons(){
+  const el=document.getElementById('categoryTabs');
+  if(!el) return;
+  el.innerHTML=cats().map(c=>`<button class="${c===activeCat?'active':''}" onclick="setCat('${c.replace(/'/g,"\\'")}')">${c}</button>`).join('')
+}
+
+function renderMenu(){
+  const grid=document.getElementById('menuGrid');
+  if(!grid) return;
+  let q=(document.getElementById('searchBox')?.value||'').toLowerCase();
+  let sort=document.getElementById('sortBox')?.value||'featured';
+  let items=activeCat==='All'?menu:[...menu].filter(x=>x.cat===activeCat);
+  items=items.filter(x=>(x.name+x.desc+x.cat).toLowerCase().includes(q));
+  if(sort==='low')items.sort((a,b)=>a.price-b.price);
+  if(sort==='high')items.sort((a,b)=>b.price-a.price);
+  grid.innerHTML=items.length?items.map(p=>`
+    <div class="product ${p.sold_out ? 'sold-out' : ''}">
+      <div class="add-row"><span>${p.badge}</span><span>${p.cat}</span></div>
+      <h3>${p.name}</h3>
+      <small>${p.desc}</small>
+      <div class="price">${money(p.price)}</div>
+      ${p.sold_out || Number(p.stock||0)<=0
+        ? `<button class="btn secondary full" disabled>Sold Out</button>`
+        : `<button class="btn primary full" onclick="addToCart('${escapeName(p.name)}')">Add to Cart</button>`
+      }
+    </div>`).join(''):'<p>No items found. Try another search.</p>'
+}
+
+function escapeName(s){return String(s).replace(/'/g,"\\'")}
+
+function addToCart(name){
+  let p=menu.find(x=>x.name===name);
+  if(!p)return;
+  if(p.sold_out || Number(p.stock||0)<=0){alert(`${p.name} is currently sold out.`);return;}
+  let item=cart.find(x=>x.name===name);
+  if(item){
+    if(item.qty+1 > Number(p.stock||999)){alert(`Only ${p.stock} available for ${p.name}.`);return;}
+    item.qty++;
+  } else {
+    cart.push({...p,qty:1});
+  }
+  saveCart();
+  toggleCart(true)
+}
+
+function changeQty(name,d){
+  let item=cart.find(x=>x.name===name);
+  if(!item)return;
+  const inv=menu.find(x=>x.name===name);
+  if(d>0 && inv && item.qty+1 > Number(inv.stock||999)){alert(`Only ${inv.stock} available for ${name}.`);return;}
+  item.qty+=d;
+  if(item.qty<=0)cart=cart.filter(x=>x.name!==name);
+  saveCart()
+}
+
 function saveCart(){localStorage.setItem('sst_cart_final',JSON.stringify(cart));renderCart()}
+
 function subtotal(){return cart.reduce((s,x)=>s+x.price*x.qty,0)}
+
 function deliveryFee(){
   let type=document.getElementById('orderType')?.value;
   if(type==='Local Delivery') return Number(calculatedDelivery.fee||0)/100;
-  // Mail Shipping is no longer a flat fee. Shipping will be quoted/invoiced separately.
   return 0;
 }
+
 function hasNoShippingItem(){
   return cart.some(item => item.name.toLowerCase().includes('cheesecake'));
 }
+
 function tipAmount(){
   const choice=document.getElementById('tipChoice')?.value || '0';
   if(choice==='custom') return Math.max(0, Number(document.getElementById('customTip')?.value || 0));
   return Math.round((subtotal()*Number(choice))*100)/100;
 }
+
 function serviceLabel(){
   let type=document.getElementById('orderType')?.value;
   if(type==='Local Delivery') return 'Local Delivery Fee';
   if(type==='Mail Shipping') return 'Shipping Quote';
   return 'Service Fee';
 }
+
 function total(){return subtotal()+deliveryFee()+tipAmount()}
-function renderCart(){const count=cart.reduce((s,x)=>s+x.qty,0);document.getElementById('cartCount').textContent=count;document.getElementById('cartItems').innerHTML=cart.length?cart.map(x=>`<div class="cart-item"><b>${x.name}</b><br><small>${money(x.price)} each</small><div class="qty"><button onclick="changeQty('${escapeName(x.name)}',-1)">-</button><span>${x.qty}</span><button onclick="changeQty('${escapeName(x.name)}',1)">+</button><strong>${money(x.price*x.qty)}</strong></div></div>`).join(''):'<p>Your cart is empty. Add treats from the menu.</p>';document.getElementById('cartSubtotal').textContent=money(subtotal());document.getElementById('cartDelivery').textContent=money(deliveryFee());
-  const label=document.querySelector('.cart-total span');
+
+function renderCart(){
+  const count=cart.reduce((s,x)=>s+x.qty,0);
+  const cartCount=document.getElementById('cartCount');
+  if(cartCount) cartCount.textContent=count;
+  const cartItems=document.getElementById('cartItems');
+  if(cartItems) cartItems.innerHTML=cart.length?cart.map(x=>`<div class="cart-item"><b>${x.name}</b><br><small>${money(x.price)} each</small><div class="qty"><button onclick="changeQty('${escapeName(x.name)}',-1)">-</button><span>${x.qty}</span><button onclick="changeQty('${escapeName(x.name)}',1)">+</button><strong>${money(x.price*x.qty)}</strong></div></div>`).join(''):'<p>Your cart is empty. Add treats from the menu.</p>';
+  const sub=document.getElementById('cartSubtotal'); if(sub) sub.textContent=money(subtotal());
+  const del=document.getElementById('cartDelivery'); if(del) del.textContent=(document.getElementById('orderType')?.value==='Mail Shipping') ? 'Calculated after review' : money(deliveryFee());
   const rows=document.querySelectorAll('.cart-total span');
   if(rows[1]) rows[1].textContent=serviceLabel();
-  document.getElementById('cartTotal').textContent=money(total());
+  const totalEl=document.getElementById('cartTotal'); if(totalEl) totalEl.textContent=money(total());
   const co=document.getElementById('checkoutTotal');if(co)co.textContent=money(total());
   const tipText=document.getElementById('tipPreview'); if(tipText) tipText.textContent=money(tipAmount());
 }
-function toggleCart(force){let open=force===undefined?!document.getElementById('cartPanel').classList.contains('open'):force;document.getElementById('cartPanel').classList.toggle('open',open);document.getElementById('overlay').classList.toggle('show',open)}
-function setScheduleFieldsForOrderType(type){
-  const dateInput=document.querySelector('[name="date"]');
-  const timeInput=document.querySelector('[name="time"]');
-  const dateLabel=dateInput?.closest('label');
-  const timeLabel=timeInput?.closest('label');
-  const isShipping=type==='Mail Shipping';
-  if(dateInput){
-    dateInput.required=!isShipping;
-    if(isShipping) dateInput.value='';
-  }
-  if(timeInput){
-    timeInput.required=!isShipping;
-    if(isShipping) timeInput.value='';
-  }
-  if(dateLabel) dateLabel.classList.toggle('hidden', isShipping);
-  if(timeLabel) timeLabel.classList.toggle('hidden', isShipping);
+
+function toggleCart(force){
+  let open=force===undefined?!document.getElementById('cartPanel').classList.contains('open'):force;
+  document.getElementById('cartPanel').classList.toggle('open',open);
+  document.getElementById('overlay').classList.toggle('show',open)
+}
+
+
+function getAddressParts(){
+  return {
+    street: document.querySelector('[name="street"]')?.value?.trim() || '',
+    apt: document.querySelector('[name="apt"]')?.value?.trim() || '',
+    city: document.querySelector('[name="city"]')?.value?.trim() || '',
+    state: document.querySelector('[name="state"]')?.value?.trim() || '',
+    zip: document.querySelector('[name="zip"]')?.value?.trim() || ''
+  };
+}
+
+function buildFullAddress(){
+  const a=getAddressParts();
+  return [a.street, a.apt, `${a.city}, ${a.state} ${a.zip}`.trim()].filter(Boolean).join(', ');
+}
+
+function syncFullAddress(){
+  const hidden=document.querySelector('[name="address"]');
+  if(hidden) hidden.value=buildFullAddress();
+}
+
+function setAddressRequired(required){
+  ['street','city','state','zip'].forEach(name=>{
+    const input=document.querySelector(`[name="${name}"]`);
+    if(input) input.required=required;
+  });
 }
 
 function updateDeliveryFields(){
   let type=document.getElementById('orderType').value;
-  setScheduleFieldsForOrderType(type);
-  let show=type!=='Pickup';
   const fields=document.getElementById('deliveryFields');
-  fields.classList.toggle('hidden',!show);
+  const addressHidden=document.querySelector('[name="address"]');
+  fields.classList.toggle('hidden', type==='Pickup');
+  setAddressRequired(type !== 'Pickup');
+
+  document.querySelectorAll('[data-schedule-field]').forEach(el=>{
+    el.classList.toggle('hidden', type==='Mail Shipping');
+    const input=el.querySelector('input');
+    if(input) input.required = type !== 'Mail Shipping';
+  });
+
   let estimator=document.getElementById('deliveryEstimator');
   if(!estimator){
     estimator=document.createElement('div');
@@ -85,22 +230,26 @@ function updateDeliveryFields(){
     estimator.className='note';
     fields.appendChild(estimator);
   }
+
   calculatedDelivery={fee:0,miles:null,available:false,address:''};
+
   if(type==='Local Delivery'){
-    estimator.innerHTML='Enter the full delivery address, then click <button type="button" class="btn secondary" onclick="calculateDeliveryFee(true)">Calculate Delivery Fee</button><br><small>Delivery is available within 20 miles of the North Charleston area. Your exact pickup address is not shown publicly.</small>';
+    estimator.innerHTML='Enter the delivery address, then click <button type="button" class="btn secondary" onclick="calculateDeliveryFee(true)">Calculate Delivery Fee</button><br><small>The website will calculate distance automatically. Customers do not need to choose miles.</small>';
   }else if(type==='Mail Shipping'){
-    estimator.innerHTML='<b>Mail Shipping:</b> Shipping date/time is not selected during checkout.<br><small>Shipping cost is not a flat fee. We will package your order, calculate the real shipping cost based on destination and package weight, then send you an update/invoice when your order is ready to ship. You will also receive updates when the order is ready and delivered.</small><br><b>Reminder:</b> Cheesecake items cannot be shipped.';
+    estimator.innerHTML='<b>Mail Shipping:</b> Enter the full mailing address. Shipping will be calculated automatically once live carrier rates are connected. Until then, shipping may be quoted separately after review and packing.<br><small>Reminder: Cheesecake items cannot be shipped.</small>';
   }else{
-    estimator.innerHTML='';
+    if(estimator) estimator.innerHTML='';
+    if(addressHidden) addressHidden.value='';
   }
   renderCart();
 }
 
-
 async function calculateDeliveryFee(showAlert=true){
-  const address=document.querySelector('[name="address"]')?.value?.trim();
+  const address=buildFullAddress();
+  syncFullAddress();
+  const parts=getAddressParts();
   const estimator=document.getElementById('deliveryEstimator');
-  if(!address){ if(showAlert) alert('Please enter the full delivery address first.'); return false; }
+  if(!parts.street || !parts.city || !parts.state || !parts.zip){ if(showAlert) alert('Please enter street address, city, state, and ZIP code.'); return false; }
   if(estimator) estimator.innerHTML='Calculating delivery distance...';
   try{
     const res=await fetch('/api/delivery-distance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address})});
@@ -123,6 +272,7 @@ async function calculateDeliveryFee(showAlert=true){
     return false;
   }
 }
+
 async function submitOrder(e){
   e.preventDefault();
   if(!cart.length){alert('Please add at least one item to the cart.');return}
@@ -132,8 +282,15 @@ async function submitOrder(e){
     const ok=await calculateDeliveryFee(false);
     if(!ok){alert('Local delivery is only available within 20 miles. Please enter a valid local delivery address or choose Pickup.');return}
   }
-  setScheduleFieldsForOrderType(selectedType);
   const form=e.target;
+  syncFullAddress();
+  if(selectedType !== 'Pickup'){
+    const parts=getAddressParts();
+    if(!parts.street || !parts.city || !parts.state || !parts.zip){
+      alert('Please enter street address, city, state, and ZIP code.');
+      return;
+    }
+  }
   const button=form.querySelector('button[type="submit"]');
   const originalText=button ? button.textContent : '';
   if(button){button.disabled=true;button.textContent='Opening secure checkout...'}
@@ -146,7 +303,6 @@ async function submitOrder(e){
       items:[...cart],
       subtotal:subtotal(),
       delivery:deliveryFee(),
-      shippingQuoteRequired:selectedType==='Mail Shipping',
       tip:tipAmount(),
       serviceLabel:serviceLabel(),
       total:total(),
@@ -168,20 +324,8 @@ async function submitOrder(e){
     if(button){button.disabled=false;button.textContent=originalText}
   }
 }
-function renderAdmin(){
-  const adminOrders=document.getElementById('adminOrders');
-  const adminRevenue=document.getElementById('adminRevenue');
-  const adminCustomers=document.getElementById('adminCustomers');
-  const adminAverage=document.getElementById('adminAverage');
-  const ordersList=document.getElementById('ordersList');
-  if(!adminOrders || !adminRevenue || !adminCustomers || !adminAverage || !ordersList) return;
-  const revenue=orders.reduce((s,o)=>s+Number(o.total),0);
-  adminOrders.textContent=orders.length;
-  adminRevenue.textContent=money(revenue);
-  adminCustomers.textContent=new Set(orders.map(o=>o.customer.email)).size;
-  adminAverage.textContent=money(orders.length?revenue/orders.length:0);
-  ordersList.innerHTML=orders.length?orders.map(o=>`<div class="order-card"><b>${o.id} • ${o.customer.name} • ${money(o.total)}</b><p>${o.items.map(i=>i.qty+' x '+i.name).join(', ')}</p><small>${o.customer.orderType} • ${o.customer.phone} • ${o.status} • ${o.created}</small><br><small>${o.customer.address||''}</small></div>`).join(''):'<p>No test orders yet. Place a sample order to test the flow.</p>'
-}
+
+function renderAdmin(){}
 
 function setupTipOptions(){
   const paymentBox=document.querySelector('.payment-options');
@@ -206,6 +350,7 @@ function setTip(value){
   renderCart();
 }
 
-function exportOrders(){if(!orders.length){alert('No orders to export yet.');return}const rows=[['Order ID','Date','Customer','Email','Phone','Order Type','Items','Subtotal','Delivery','Total','Status']];orders.forEach(o=>rows.push([o.id,o.created,o.customer.name,o.customer.email,o.customer.phone,o.customer.orderType,o.items.map(i=>`${i.qty} x ${i.name}`).join('; '),o.subtotal,o.delivery,o.total,o.status]));const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n');const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='shares-sweet-treats-orders.csv';a.click()}
-function clearOrders(){if(confirm('Clear test orders from this browser?')){orders=[];localStorage.setItem('sst_orders_final','[]');renderAdmin()}}
+function exportOrders(){}
+function clearOrders(){}
+
 init();

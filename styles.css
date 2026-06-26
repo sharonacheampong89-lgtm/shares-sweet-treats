@@ -42,3 +42,21 @@ button:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:900px){
   .launch-feature,.featured-favorites .favorite-grid,.review-grid,.faq-grid{grid-template-columns:1fr}
 }
+
+
+/* Address checkout polish */
+.address-grid{
+  grid-template-columns:2fr 1fr 1.2fr .8fr .9fr;
+}
+#deliveryEstimator{
+  grid-column:1 / -1;
+  margin-top:0;
+  background:#fff8fb;
+  border:1px solid #f5dce5;
+  border-radius:18px;
+  padding:14px 16px;
+}
+@media(max-width:900px){
+  .address-grid{grid-template-columns:1fr}
+  #deliveryEstimator{grid-column:auto}
+}

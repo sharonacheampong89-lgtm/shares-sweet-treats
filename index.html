@@ -178,9 +178,13 @@
           <label data-schedule-field="true">Preferred Date<input type="date" name="date" required></label>
           <label data-schedule-field="true">Preferred Time<input type="time" name="time" required></label>
         </div>
-        <div id="deliveryFields" class="delivery-fields hidden">
-          <label>Delivery / Shipping Address<input name="address" placeholder="Street, apartment, city, state, ZIP"></label>
-          <label data-distance-field="true">Distance Range<select id="miles" name="miles" onchange="renderCart()"><option value="0">Shipping / Not Sure</option><option value="5">0–5 miles</option><option value="10">6–10 miles</option><option value="15">11–15 miles</option><option value="20">16–20 miles</option></select></label>
+        <div id="deliveryFields" class="delivery-fields address-grid hidden">
+          <label>Street Address<input name="street" placeholder="Street address"></label>
+          <label>Apt / Suite<input name="apt" placeholder="Apartment, suite, unit (optional)"></label>
+          <label>City<input name="city" placeholder="City"></label>
+          <label>State<input name="state" placeholder="State"></label>
+          <label>ZIP Code<input name="zip" placeholder="ZIP code"></label>
+          <input type="hidden" name="address">
         </div>
         <label>Special Instructions<textarea name="notes" placeholder="Allergies, colors, packaging, pickup or delivery instructions..."></textarea></label>
         <div class="payment-options">
