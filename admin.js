@@ -4,6 +4,15 @@ let orders = [];
 const money = n => '$' + Number(n || 0).toFixed(2);
 const clean = v => String(v ?? '');
 
+const statusOptions = [
+  ['preparing', 'Preparing'],
+  ['ready', 'Ready'],
+  ['out_for_delivery', 'Out for Delivery'],
+  ['shipped', 'Shipped'],
+  ['delivered', 'Delivered'],
+  ['completed', 'Completed']
+];
+
 async function loginAdmin(){
   const input = document.getElementById('adminPassword');
   const error = document.getElementById('loginError');
@@ -41,7 +50,7 @@ function renderStats(filtered){
   document.getElementById('statOrders').textContent = filtered.length;
   document.getElementById('statSales').textContent = money(filtered.reduce((s,o)=>s+Number(o.total||0),0));
   document.getElementById('statNew').textContent = filtered.filter(o => ['paid','new','order received'].includes(clean(o.order_status).toLowerCase())).length;
-  document.getElementById('statCompleted').textContent = filtered.filter(o => clean(o.order_status).toLowerCase()==='completed').length;
+  document.getElementById('statCompleted').textContent = filtered.filter(o => ['completed','delivered'].includes(clean(o.order_status).toLowerCase())).length;
 }
 
 function renderOrders(){
@@ -60,13 +69,16 @@ function itemList(items){
   return arr.map(i => `<li>${clean(i.qty || i.quantity || 1)} × ${clean(i.name)} ${i.price ? '— '+money(i.price) : ''}</li>`).join('') || '<li>No items listed</li>';
 }
 
+function formatStatus(status){
+  return clean(status || 'paid').replaceAll('_',' ');
+}
+
 function orderCard(o){
-  const status = clean(o.order_status || 'paid').toLowerCase();
   return `<article class="order-card">
     <div class="order-top">
       <div>
         <span class="badge paid">${clean(o.payment_status || 'paid')}</span>
-        <span class="badge">${clean(o.order_status || 'paid')}</span>
+        <span class="badge">${formatStatus(o.order_status || 'paid')}</span>
         <h3>${clean(o.customer_name || 'Customer')} — ${money(o.total)}</h3>
         <div class="meta">
           ${clean(o.email)} • ${clean(o.phone)}<br>
@@ -79,20 +91,31 @@ function orderCard(o){
     <ul class="items">${itemList(o.items)}</ul>
     ${o.notes ? `<p><strong>Notes:</strong> ${clean(o.notes)}</p>` : ''}
     <div class="actions">
-      ${['preparing','ready','out_for_delivery','completed'].map(s => `<button class="small" onclick="updateStatus('${o.id}','${s}')">${s.replaceAll('_',' ')}</button>`).join('')}
+      ${statusOptions.map(([value,label]) => `<button class="small" onclick="updateStatus('${o.id}','${value}')">${label}</button>`).join('')}
     </div>
+    <small class="meta">Status buttons update Supabase and email the customer automatically.</small>
   </article>`;
 }
 
 async function updateStatus(id, status){
   try{
+    const order = orders.find(o => o.id === id);
+    const label = status.replaceAll('_',' ');
+    const ok = confirm(`Update this order to "${label}" and email ${order?.email || 'the customer'}?`);
+    if(!ok) return;
+
     const res = await fetch('/api/admin-orders', {
       method:'PATCH',
       headers:{'Content-Type':'application/json','x-admin-password':adminPassword},
-      body:JSON.stringify({id,status})
+      body:JSON.stringify({id,status,notifyCustomer:true})
     });
     const data = await res.json();
     if(!res.ok) throw new Error(data.error || 'Could not update status.');
+    if(data.email?.error){
+      alert('Status updated, but the customer email failed: ' + data.email.error);
+    }else{
+      alert('Status updated and customer email sent.');
+    }
     await loadOrders();
   }catch(err){ alert(err.message); }
 }
