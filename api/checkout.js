@@ -15,11 +15,6 @@ const MENU = new Map([
   ['Chocolate Drizzle', 69], ['Nutella Drizzle', 69], ['Oreo Crumble', 69], ['M&M Topping', 69], ['Extra Filling', 69]
 ]);
 
-function shippingFeeCents(orderType) {
-  if (orderType === 'Mail Shipping') return 1200;
-  return 0;
-}
-
 function tipCents(value) {
   const dollars = Number(value || 0);
   if (!Number.isFinite(dollars) || dollars <= 0) return 0;
@@ -66,8 +61,9 @@ module.exports = async function handler(req, res) {
     });
 
     let serviceFee = 0;
-    let serviceName = 'Service Fee';
+    let serviceName = '';
     let deliveryMiles = '';
+    let shippingQuoteRequired = 'no';
 
     if (customer.orderType === 'Local Delivery') {
       const delivery = await calculateDelivery(customer.address || '');
@@ -78,8 +74,11 @@ module.exports = async function handler(req, res) {
       deliveryMiles = delivery.miles.toFixed(1);
       serviceName = `Local Delivery Fee (${deliveryMiles} miles)`;
     } else if (customer.orderType === 'Mail Shipping') {
-      serviceFee = shippingFeeCents(customer.orderType);
-      serviceName = 'Shipping Fee';
+      // Shipping is no longer a flat rate because cost depends on destination, package size, and weight.
+      // Customer pays for items now; shipping will be quoted/invoiced after the order is packed.
+      serviceFee = 0;
+      serviceName = '';
+      shippingQuoteRequired = 'yes';
     }
 
     if (serviceFee > 0) {
@@ -105,6 +104,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    const isShipping = customer.orderType === 'Mail Shipping';
     const origin = req.headers.origin || `https://${req.headers.host}`;
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -121,11 +121,12 @@ module.exports = async function handler(req, res) {
         phone: String(customer.phone || '').slice(0, 500),
         order_type: String(customer.orderType || '').slice(0, 500),
         address: String(customer.address || '').slice(0, 500),
-        preferred_date: String(customer.date || '').slice(0, 500),
-        preferred_time: String(customer.time || '').slice(0, 500),
+        preferred_date: isShipping ? 'Shipping order - no customer-selected date' : String(customer.date || '').slice(0, 500),
+        preferred_time: isShipping ? 'Shipping order - no customer-selected time' : String(customer.time || '').slice(0, 500),
         notes: String(customer.notes || '').slice(0, 500),
         service_fee: String(serviceFee),
         delivery_miles: String(deliveryMiles),
+        shipping_quote_required: shippingQuoteRequired,
         tip: String(tip)
       }
     });

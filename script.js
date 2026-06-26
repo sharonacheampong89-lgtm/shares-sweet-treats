@@ -27,7 +27,7 @@ function subtotal(){return cart.reduce((s,x)=>s+x.price*x.qty,0)}
 function deliveryFee(){
   let type=document.getElementById('orderType')?.value;
   if(type==='Local Delivery') return Number(calculatedDelivery.fee||0)/100;
-  if(type==='Mail Shipping') return 12;
+  // Mail Shipping is no longer a flat fee. Shipping will be quoted/invoiced separately.
   return 0;
 }
 function hasNoShippingItem(){
@@ -41,7 +41,7 @@ function tipAmount(){
 function serviceLabel(){
   let type=document.getElementById('orderType')?.value;
   if(type==='Local Delivery') return 'Local Delivery Fee';
-  if(type==='Mail Shipping') return 'Shipping Fee';
+  if(type==='Mail Shipping') return 'Shipping Quote';
   return 'Service Fee';
 }
 function total(){return subtotal()+deliveryFee()+tipAmount()}
@@ -54,8 +54,27 @@ function renderCart(){const count=cart.reduce((s,x)=>s+x.qty,0);document.getElem
   const tipText=document.getElementById('tipPreview'); if(tipText) tipText.textContent=money(tipAmount());
 }
 function toggleCart(force){let open=force===undefined?!document.getElementById('cartPanel').classList.contains('open'):force;document.getElementById('cartPanel').classList.toggle('open',open);document.getElementById('overlay').classList.toggle('show',open)}
+function setScheduleFieldsForOrderType(type){
+  const dateInput=document.querySelector('[name="date"]');
+  const timeInput=document.querySelector('[name="time"]');
+  const dateLabel=dateInput?.closest('label');
+  const timeLabel=timeInput?.closest('label');
+  const isShipping=type==='Mail Shipping';
+  if(dateInput){
+    dateInput.required=!isShipping;
+    if(isShipping) dateInput.value='';
+  }
+  if(timeInput){
+    timeInput.required=!isShipping;
+    if(isShipping) timeInput.value='';
+  }
+  if(dateLabel) dateLabel.classList.toggle('hidden', isShipping);
+  if(timeLabel) timeLabel.classList.toggle('hidden', isShipping);
+}
+
 function updateDeliveryFields(){
   let type=document.getElementById('orderType').value;
+  setScheduleFieldsForOrderType(type);
   let show=type!=='Pickup';
   const fields=document.getElementById('deliveryFields');
   fields.classList.toggle('hidden',!show);
@@ -68,14 +87,15 @@ function updateDeliveryFields(){
   }
   calculatedDelivery={fee:0,miles:null,available:false,address:''};
   if(type==='Local Delivery'){
-    estimator.innerHTML='Enter the full delivery address, then click <button type="button" class="btn secondary" onclick="calculateDeliveryFee(true)">Calculate Delivery Fee</button><br><small>Delivery is estimated from 3323 Mountainbrook Ave, North Charleston, SC 29420. Delivery is available within 20 miles.</small>';
+    estimator.innerHTML='Enter the full delivery address, then click <button type="button" class="btn secondary" onclick="calculateDeliveryFee(true)">Calculate Delivery Fee</button><br><small>Delivery is available within 20 miles of the North Charleston area. Your exact pickup address is not shown publicly.</small>';
   }else if(type==='Mail Shipping'){
-    estimator.innerHTML='Mail shipping is a flat <b>$12.00</b>. Cheesecake items cannot be shipped.';
+    estimator.innerHTML='<b>Mail Shipping:</b> Shipping date/time is not selected during checkout.<br><small>Shipping cost is not a flat fee. We will package your order, calculate the real shipping cost based on destination and package weight, then send you an update/invoice when your order is ready to ship. You will also receive updates when the order is ready and delivered.</small><br><b>Reminder:</b> Cheesecake items cannot be shipped.';
   }else{
     estimator.innerHTML='';
   }
   renderCart();
 }
+
 
 async function calculateDeliveryFee(showAlert=true){
   const address=document.querySelector('[name="address"]')?.value?.trim();
@@ -112,6 +132,7 @@ async function submitOrder(e){
     const ok=await calculateDeliveryFee(false);
     if(!ok){alert('Local delivery is only available within 20 miles. Please enter a valid local delivery address or choose Pickup.');return}
   }
+  setScheduleFieldsForOrderType(selectedType);
   const form=e.target;
   const button=form.querySelector('button[type="submit"]');
   const originalText=button ? button.textContent : '';
@@ -125,6 +146,7 @@ async function submitOrder(e){
       items:[...cart],
       subtotal:subtotal(),
       delivery:deliveryFee(),
+      shippingQuoteRequired:selectedType==='Mail Shipping',
       tip:tipAmount(),
       serviceLabel:serviceLabel(),
       total:total(),
