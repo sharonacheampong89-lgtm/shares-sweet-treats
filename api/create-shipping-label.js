@@ -157,10 +157,12 @@ module.exports = async function handler(req, res){
     const rate = chooseRate(shipment.rates);
     if(!rate) throw new Error('No Shippo shipping rates available for this order.');
     const transaction = await createTransaction(rate);
-    if(transaction.status !== 'SUCCESS'){
-      const messages = (transaction.messages || []).map(m => m.text || m.message).filter(Boolean).join(' ');
-      throw new Error(messages || `Shippo transaction failed with status: ${transaction.status}`);
-    }
+
+console.log("SHIPPO TRANSACTION:", JSON.stringify(transaction, null, 2));
+
+if (transaction.status !== "SUCCESS") {
+  throw new Error(JSON.stringify(transaction));
+}
 
     const updates = {
       tracking_number: transaction.tracking_number || '',
