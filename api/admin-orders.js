@@ -106,19 +106,32 @@ module.exports = async function handler(req, res){
     }
 
     if(req.method === 'PATCH'){
-      const { id, status, notifyCustomer = true } = req.body || {};
-      if(!id || !status) return res.status(400).json({error:'Missing order id or status.'});
+      const { id, status, notifyCustomer = true, address, delivery_address } = req.body || {};
+      if(!id) return res.status(400).json({error:'Missing order id.'});
+
+      const updates = {};
+      if(status) updates.order_status = status;
+
+      const newAddress = String(delivery_address || address || '').trim();
+      if(newAddress){
+        updates.address = newAddress;
+        updates.delivery_address = newAddress;
+      }
+
+      if(!Object.keys(updates).length){
+        return res.status(400).json({error:'Nothing to update.'});
+      }
 
       const { data, error } = await supabase
         .from('orders')
-        .update({ order_status: status })
+        .update(updates)
         .eq('id', id)
         .select('*')
         .single();
       if(error) throw error;
 
       let email = { skipped:true };
-      if(notifyCustomer){
+      if(status && notifyCustomer){
         try{
           email = await sendStatusEmail(data, status);
         }catch(emailError){

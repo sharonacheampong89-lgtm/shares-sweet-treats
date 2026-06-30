@@ -205,74 +205,45 @@ li{margin:8px 0;font-size:16px}
 }
 
 
-function isShippingOrder(o){
-  return clean(o.order_type).toLowerCase().includes('shipping');
+function addressPromptValue(o){
+  const current = clean(o.delivery_address || o.address || '');
+  return current.includes('No shipping') ? '' : current;
 }
 
-function shippingBlock(o){
-  if(!isShippingOrder(o)) return '';
-
-  const address = clean(o.delivery_address || o.address || 'No shipping address saved.');
-  const tracking = clean(o.tracking_number || '');
-  const trackingUrl = clean(o.tracking_url || '');
-  const labelUrl = clean(o.label_url || '');
-  const carrier = clean(o.carrier || '');
-  const service = clean(o.shipping_service || '');
-
-  if(tracking || labelUrl){
-    return `
-      <div class="shipping-box">
-        <h4>📦 Shipping Label</h4>
-        <p><strong>Address:</strong><br>${address}</p>
-        <p><strong>Carrier:</strong> ${carrier || 'USPS'} ${service ? '• '+service : ''}<br>
-        <strong>Tracking:</strong> ${tracking || 'Created'}</p>
-        <div class="actions">
-          ${labelUrl ? `<a class="small link-btn" href="${labelUrl}" target="_blank">Print Label</a>` : ''}
-          ${trackingUrl ? `<a class="small link-btn" href="${trackingUrl}" target="_blank">Track Package</a>` : ''}
-        </div>
-      </div>
-    `;
-  }
-
-  return `
-    <div class="shipping-box">
-      <h4>📦 Shipping</h4>
-      <p><strong>Address:</strong><br>${address}</p>
-      <button class="small" onclick="createShippingLabel('${o.id}')">Create USPS Label</button>
-      <small class="meta">This will purchase real postage from Shippo.</small>
-    </div>
-  `;
-}
-
-async function createShippingLabel(id){
+async function editOrderAddress(id){
   const order = orders.find(o => o.id === id);
   if(!order){ alert('Order not found.'); return; }
 
-  const ok = confirm(`Create and purchase a USPS shipping label for ${order.customer_name || 'this customer'}?\n\nThis will charge your Shippo account for postage.`);
-  if(!ok) return;
+  const current = addressPromptValue(order);
+  const example = '123 Main Street, Apt 2, North Charleston SC 29420';
+  const address = prompt(`Enter the full delivery/shipping address:\n\nExample:\n${example}`, current);
+
+  if(address === null) return;
+  const cleaned = address.trim();
+
+  if(!cleaned){
+    alert('Please enter a valid address.');
+    return;
+  }
 
   try{
-    const res = await fetch('/api/create-shipping-label', {
-      method:'POST',
+    const res = await fetch('/api/admin-orders', {
+      method:'PATCH',
       headers:{'Content-Type':'application/json','x-admin-password':adminPassword},
-      body:JSON.stringify({id})
+      body:JSON.stringify({
+        id,
+        address: cleaned,
+        delivery_address: cleaned,
+        notifyCustomer:false
+      })
     });
+
     const data = await res.json();
-    if(!res.ok) throw new Error(data.error || 'Could not create shipping label.');
+    if(!res.ok) throw new Error(data.error || 'Could not save address.');
 
-    orders = orders.map(o => o.id === id ? (data.order || o) : o);
+    orders = orders.map(o => o.id === id ? (data.order || {...o, address:cleaned, delivery_address:cleaned}) : o);
     renderOrders();
-
-    if(data.order?.label_url){
-      window.open(data.order.label_url, '_blank');
-    }
-
-    if(data.email?.error){
-      alert('Label created, but tracking email failed: ' + data.email.error);
-    }else{
-      alert('Shipping label created. Tracking email sent to customer.');
-    }
-
+    alert('Address saved. You can now create the USPS label.');
     await loadOrders();
   }catch(err){
     alert(err.message);
@@ -297,9 +268,9 @@ function orderCard(o){
     </div>
     <ul class="items">${itemList(o.items)}</ul>
     ${o.notes ? `<p><strong>Notes:</strong> ${clean(o.notes)}</p>` : ''}
-    ${shippingBlock(o)}
     <div class="actions">
       <button class="small" onclick="printSlip('${o.id}')">🖨 Print Slip</button>
+      <button class="small" onclick="editOrderAddress('${o.id}')">Edit Address</button>
       ${statusOptions.map(([value,label]) => `<button class="small" onclick="updateStatus('${o.id}','${value}')">${label}</button>`).join('')}
     </div>
     <small class="meta">Status buttons update Supabase and email the customer automatically.</small>
