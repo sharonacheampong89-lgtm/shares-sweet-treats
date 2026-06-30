@@ -147,7 +147,7 @@ function renderOrders(){
 
 function itemList(items){
   let arr = Array.isArray(items) ? items : [];
-  return arr.map(i => `<li>${clean(i.qty || i.quantity || 1)} × ${clean(i.name)} ${i.price ? '— '+money(i.price) : ''}</li>`).join('') || '<li>No items listed</li>';
+  return arr.map(i => `<li>${clean(i.qty || i.quantity || 1)} Ã— ${clean(i.name)} ${i.price ? 'â€” '+money(i.price) : ''}</li>`).join('') || '<li>No items listed</li>';
 }
 
 function formatStatus(status){
@@ -189,7 +189,7 @@ li{margin:8px 0;font-size:16px}
 </div>
 <div class="box">
 <h3>Items</h3>
-<ul>${(Array.isArray(o.items)?o.items:[]).map(i=>`<li><span class="check"></span>${clean(i.qty || i.quantity || 1)} × ${clean(i.name)}</li>`).join('') || '<li>No items listed</li>'}</ul>
+<ul>${(Array.isArray(o.items)?o.items:[]).map(i=>`<li><span class="check"></span>${clean(i.qty || i.quantity || 1)} Ã— ${clean(i.name)}</li>`).join('') || '<li>No items listed</li>'}</ul>
 </div>
 <div class="box">
 <h3>Notes</h3>
@@ -251,16 +251,101 @@ async function editOrderAddress(id){
 }
 
 
+function isShippingOrder(o){
+  return clean(o.order_type).toLowerCase().includes('shipping');
+}
+
+function shippingBlock(o){
+  if(!isShippingOrder(o)) return '';
+
+  const address = clean(o.delivery_address || o.address || 'No shipping address saved.');
+  const tracking = clean(o.tracking_number || '');
+  const trackingUrl = clean(o.tracking_url || '');
+  const labelUrl = clean(o.label_url || '');
+  const carrier = clean(o.carrier || '');
+  const service = clean(o.shipping_service || '');
+
+  if(tracking || labelUrl){
+    return `
+      <div class="shipping-box">
+        <h4>ðŸ“¦ Shipping Label</h4>
+        <p><strong>Address:</strong><br>${address}</p>
+        <p><strong>Carrier:</strong> ${carrier || 'USPS'} ${service ? 'â€¢ '+service : ''}<br>
+        <strong>Tracking:</strong> ${tracking || 'Created'}</p>
+        <div class="actions">
+          <button class="small" onclick="editOrderAddress('${o.id}')">Edit Address</button>
+          ${labelUrl ? `<a class="small link-btn" href="${labelUrl}" target="_blank">Print Label</a>` : ''}
+          ${trackingUrl ? `<a class="small link-btn" href="${trackingUrl}" target="_blank">Track Package</a>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="shipping-box">
+      <h4>ðŸ“¦ Shipping</h4>
+      <p><strong>Address:</strong><br>${address}</p>
+      <div class="actions">
+        <button class="small" onclick="editOrderAddress('${o.id}')">Edit Address</button>
+        <button class="small" onclick="createShippingLabel('${o.id}')">Create USPS Label</button>
+      </div>
+      <small class="meta">This will purchase real postage from Shippo.</small>
+    </div>
+  `;
+}
+
+async function createShippingLabel(id){
+  const order = orders.find(o => o.id === id);
+  if(!order){ alert('Order not found.'); return; }
+
+  const address = clean(order.delivery_address || order.address || '');
+  if(!address || address.includes('No shipping')){
+    alert('Please click Edit Address and save the customer shipping address first.');
+    return;
+  }
+
+  const ok = confirm(`Create and purchase a USPS shipping label for ${order.customer_name || 'this customer'}?\n\nThis will charge your Shippo account for postage.`);
+  if(!ok) return;
+
+  try{
+    const res = await fetch('/api/create-shipping-label', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-admin-password':adminPassword},
+      body:JSON.stringify({id})
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Could not create shipping label.');
+
+    orders = orders.map(o => o.id === id ? (data.order || o) : o);
+    renderOrders();
+
+    if(data.order?.label_url){
+      window.open(data.order.label_url, '_blank');
+    }
+
+    if(data.email?.error){
+      alert('Label created, but tracking email failed: ' + data.email.error);
+    }else{
+      alert('Shipping label created. Tracking email sent to customer.');
+    }
+
+    await loadOrders();
+  }catch(err){
+    alert(err.message);
+  }
+}
+
+
 function orderCard(o){
   return `<article class="order-card">
     <div class="order-top">
       <div>
         <span class="badge paid">${clean(o.payment_status || 'paid')}</span>
         <span class="badge">${formatStatus(o.order_status || 'paid')}</span>
-        <h3>${orderNumber(o)} • ${clean(o.customer_name || 'Customer')} — ${money(o.total)}</h3>
+        <h3>${orderNumber(o)} â€¢ ${clean(o.customer_name || 'Customer')} â€” ${money(o.total)}</h3>
         <div class="meta">
-          ${clean(o.email)} • ${clean(o.phone)}<br>
-          ${clean(o.order_type)} ${o.delivery_distance ? '• '+o.delivery_distance+' miles' : ''}<br>
+          ${clean(o.email)} â€¢ ${clean(o.phone)}<br>
+          ${clean(o.order_type)} ${o.delivery_distance ? 'â€¢ '+o.delivery_distance+' miles' : ''}<br>
           ${clean(o.delivery_address || o.address || 'No shipping/delivery address collected.')}<br>
           ${new Date(o.created_at).toLocaleString()}
         </div>
@@ -268,8 +353,9 @@ function orderCard(o){
     </div>
     <ul class="items">${itemList(o.items)}</ul>
     ${o.notes ? `<p><strong>Notes:</strong> ${clean(o.notes)}</p>` : ''}
+    ${shippingBlock(o)}
     <div class="actions">
-      <button class="small" onclick="printSlip('${o.id}')">🖨 Print Slip</button>
+      <button class="small" onclick="printSlip('${o.id}')">ðŸ–¨ Print Slip</button>
       <button class="small" onclick="editOrderAddress('${o.id}')">Edit Address</button>
       ${statusOptions.map(([value,label]) => `<button class="small" onclick="updateStatus('${o.id}','${value}')">${label}</button>`).join('')}
     </div>
@@ -341,8 +427,8 @@ function renderInventory(){
         <div>
           <span class="badge ${item.sold_out ? '' : 'paid'}">${item.sold_out ? 'Sold Out' : 'Available'}</span>
           <span class="badge">${item.active ? 'Visible' : 'Hidden'}</span>
-          <h3>${clean(item.name)} — ${money(item.price)}</h3>
-          <div class="meta">${clean(item.category)} • Stock: ${clean(item.stock)}</div>
+          <h3>${clean(item.name)} â€” ${money(item.price)}</h3>
+          <div class="meta">${clean(item.category)} â€¢ Stock: ${clean(item.stock)}</div>
         </div>
       </div>
       <div class="actions">
