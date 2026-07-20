@@ -118,9 +118,42 @@ async function createShipment(order){
   return shippoRequest('/shipments/', { address_from:addressFrom, address_to:addressTo, parcels:[estimatePackage(order.items || [])], async:false });
 }
 function chooseRate(rates){
-  const valid = (rates || []).filter(r => String(r.currency || '').toUpperCase()==='USD' && r.object_id).sort((a,b)=>Number(a.amount||0)-Number(b.amount||0));
-  const usps = valid.filter(r => String(r.provider || '').toUpperCase().includes('USPS'));
-  return usps[0] || valid[0] || null;
+
+  const valid = (rates || []).filter(rate =>
+    String(rate.currency || '').toUpperCase() === 'USD' &&
+    rate.object_id
+  );
+
+  const priority = valid.find(rate => {
+
+    const provider = String(rate.provider || '').toUpperCase();
+
+    const token = String(
+      rate.servicelevel?.token || ''
+    ).toLowerCase();
+
+    const name = String(
+      rate.servicelevel?.name || ''
+    ).toLowerCase();
+
+    return (
+      provider === 'USPS' &&
+      (
+        token === 'usps_priority' ||
+        name === 'priority mail'
+      )
+    );
+
+  });
+
+  if(!priority){
+    throw new Error(
+      'USPS Priority Mail is unavailable for this shipment.'
+    );
+  }
+
+  return priority;
+
 }
 async function createTransaction(rate){
   return shippoRequest('/transactions/', { rate:rate.object_id, label_file_type:'PDF', async:false });
